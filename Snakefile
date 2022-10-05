@@ -1,11 +1,11 @@
 rule transform_and_embed:
-    input: "{path}/{dataset_name}.parquet"
-    output: "{path}/{dataset_name}.umap.annotated.parquet"
+    input: "{path}/{dataset_name}_embedding_output.parquet"
+    output: "{path}/{dataset_name}_umap_annotated.parquet"
     shell: "python scripts/transformation.py --transform {input} {output}"
 
 rule embed:
-    input: "{path}/{dataset_name}.parquet"
-    output: "{path}/{dataset_name}.umap.parquet",
+    input: "{path}/{dataset_name}_embedding_output.parquet"
+    output: "{path}/{dataset_name}_umap.parquet",
     shell: "python scripts/transformation.py {input} {output}"
 
 # https://figshare.com/articles/dataset/ISMB_BioVis_2022_Data/20301639
