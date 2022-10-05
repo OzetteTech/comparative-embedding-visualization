@@ -1,0 +1,6 @@
+__pycache__/
+node_modules/
+data/
+.snakemake/
+.ipynb_checkpoints/
+
