@@ -109,6 +109,7 @@ def parse_args():
     parser = ArgumentParser("Transform and embed FAUST-annotated data.")
     parser.add_argument("input", type=pathlib.Path, help="Input parquet file")
     parser.add_argument("output", type=pathlib.Path, help="Output parquet file")
+    parser.add_argument("--seed", type=int, help="Random seed for UMAP")
     parser.add_argument(
         "--transform",
         action="store_true",
@@ -132,7 +133,7 @@ def main():
     if args.transform:
         expressions = transform(df, markers, expression_levels, log=True)
 
-    embedding = embed(df, expressions, UMAP(init=pca, random_state=42))
+    embedding = embed(df, expressions, UMAP(init=pca, random_state=args.seed or 42))
     embedding.to_parquet(args.output, compression="gzip")
 
 
