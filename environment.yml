@@ -1,0 +1,16 @@
+name: compemb
+channels:
+  - bioconda
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pandas
+  - umap-learn
+  - snakemake-minimal
+  - pip
+  - pip:
+    - ipywidgets>=7.6.3
+    - jupyterlab>=3.0.6
+    - jupyterlab_widgets>=1.0.0
+    - jupyter-scatter
+    - pyarrow
