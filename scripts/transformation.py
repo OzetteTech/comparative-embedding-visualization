@@ -1,6 +1,6 @@
+import pathlib
 from argparse import ArgumentParser
 from time import time
-import pathlib
 
 import numpy as np
 import numpy.typing as npt
@@ -102,7 +102,7 @@ def to_df(df: pd.DataFrame, xy: npt.NDArray[np.double], save_as=None):
 
 
 def embed(df: pd.DataFrame, data: npt.NDArray[np.double], embeddor: UMAP, save_as=None):
-    return to_df(df, embeddor.fit_transform(data), save_as=save_as) # type:ignore
+    return to_df(df, embeddor.fit_transform(data), save_as=save_as)  # type:ignore
 
 
 def parse_args():
