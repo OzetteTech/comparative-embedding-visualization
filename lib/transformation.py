@@ -133,7 +133,8 @@ def main():
     if args.transform:
         expressions = transform(df, markers, expression_levels, log=True)
 
-    embedding = embed(df, expressions, UMAP(init=pca, random_state=args.seed or 42))
+    umap_instance = UMAP(init=pca, random_state=args.seed or 42)
+    embedding = embed(df, expressions, umap_instance)
     embedding.to_parquet(args.output, compression="gzip")
 
 
