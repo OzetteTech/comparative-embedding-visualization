@@ -1,4 +1,3 @@
-
 import ipywidgets
 import jscatter
 import numpy as np
@@ -9,12 +8,10 @@ import pandas as pd
 import embcomp.colors as colors
 import embcomp.metrics as metrics
 
-Embedding = tuple[
-    npt.ArrayLike, # x y
-    npt.NDArray    # knn_indices
-]
+Embedding = tuple[npt.ArrayLike, npt.NDArray]  # x y  # knn_indices
 
-def run(A: Embedding, B: Embedding, labels: pd.Series):
+
+def pairwise(A: Embedding, B: Embedding, labels: pd.Series):
 
     color_map = (
         [colors.gray_dark]
@@ -47,4 +44,24 @@ def run(A: Embedding, B: Embedding, labels: pd.Series):
         for xy in (A[0], B[0])
     ]
 
-    return left.show()
+    slider = ipywidgets.SelectionSlider(
+        options=range(10),
+        orientation="vertical",
+    )
+
+    ipywidgets.jslink(
+        (left.widget, "selection"),
+        (right.widget, "selection"),
+    )
+
+    ipywidgets.jslink(
+        (left.widget, "hovering"),
+        (right.widget, "hovering"),
+    )
+
+    return ipywidgets.GridBox(
+        children=[left.show(), right.show(), slider],
+        layout=ipywidgets.Layout(
+            grid_template_columns="1fr 1fr 0.1fr",
+        ),
+    )
