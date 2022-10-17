@@ -1,7 +1,5 @@
 from math import ceil
 
-from matplotlib.colors import to_rgba
-
 
 def get_cmap(num_categories, mode="light"):
     cmap = [gray_light] if mode == "light" else [gray_dark]

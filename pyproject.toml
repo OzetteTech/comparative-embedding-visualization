@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=40.8.0", "setuptools-scm", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "embcomp"
+maintainers = [
+    { name = "Trevor Manz" },
+    { name = "Fritz Lekschas" },
+]
+requires-python = ">=3.9"
+dependencies = ["pandas", "umap-learn"]
+dynamic = ["version"]
+classifiers = [
+    'Intended Audience :: Developers',
+    'Programming Language :: Python',
+    'Topic :: Software Development :: Libraries :: Python Modules',
+    'Operating System :: Unix',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+]
+
+[project.optional-dependencies]
+jupyter = [
+    'notebook',
+    'ipywidgets>=8.0.0',
+]
+
+[project.urls]
+Homepage = "https://github.com/OzetteTech/comparative-embedding-visualization"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "dirty-tag"
+write_to = "src/embcomp/_version.py"
+
+
+[tool.mypy]
+python_version = "3.9"
+follow_imports = "silent"

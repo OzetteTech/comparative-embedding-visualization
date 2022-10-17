@@ -19,11 +19,9 @@ def jaccard_pointwise(
     return dist
 
 
-def kneighbors(X: npt.ArrayLike, k: int) -> npt.NDArray:
-    # first neighbor is always self
-    nbrs = NearestNeighbors(n_neighbors=k + 1).fit(X)
-    ind = nbrs.kneighbors(X, return_distance=False)
-    return ind[:, 1:]
+def kneighbors(X: npt.NDArray, k: int) -> npt.NDArray:
+    nbrs = NearestNeighbors(n_neighbors=k).fit(X)
+    return nbrs.kneighbors(X, return_distance=False)
 
 
 @nb.njit
@@ -60,8 +58,9 @@ def jaccard_pointwise_average(
     index = pd.Series(labels, name="label")
     return pd.Series(scores, index).groupby("label").mean()  # type: ignore
 
+
 @nb.njit
-def _count_labels(knn_indices: npt.NDArray, codes: npt.NDArray) -> npt.NDArray:
+def _count_neighbor_labels(knn_indices: npt.NDArray, codes: npt.NDArray) -> npt.NDArray:
     dist = np.zeros((len(knn_indices), len(np.unique(codes))))
     for i in range(len(knn_indices)):
         for code in codes[knn_indices[i]]:
@@ -69,5 +68,9 @@ def _count_labels(knn_indices: npt.NDArray, codes: npt.NDArray) -> npt.NDArray:
     return dist
 
 
-def count_labels(knn_indices: npt.NDArray, labels: pd.Series) -> npt.NDArray:
-    return _count_labels(knn_indices, np.array(labels.cat.codes))
+def count_neighbor_labels(knn_indices: npt.NDArray, labels: pd.Series) -> npt.NDArray:
+    return _count_neighbor_labels(knn_indices, np.array(labels.cat.codes))
+
+
+def label_label_sets(knn_indices: npt.NDArray[np.int_], labels: npt.NDArray):
+    return {label: knn_indices[labels == label].unique() for label in np.unique(labels)}
