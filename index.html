@@ -1,0 +1,10 @@
+<!doctype html>
+<html>
+	<div id="root"></div>
+	<script type="module">
+		import { render } from "./src/embcomp/static/logo.js";
+		window.addEventListener("message", (event) => {
+			render(root, event.data)
+		});
+	</script>
+</html>
