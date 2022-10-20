@@ -96,7 +96,7 @@ def pairwise(
         ]
 
         threshold.max = max(l["count"] for l in logo.counts)
-        logo.threshold = threshold.value = threshold.max
+        threshold.value = threshold.max
 
     left.widget.observe(selection_change, names="selection")  # type: ignore
 
