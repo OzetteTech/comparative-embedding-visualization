@@ -1,6 +1,6 @@
 import * as d3 from "https://esm.sh/d3";
 
-export function labelParts(label) {
+function labelParts(label) {
 	return label.split(/(\w+[\-|\+])/).filter(Boolean);
 }
 
@@ -15,12 +15,11 @@ function parseEntry({ label, count }) {
 	return { markers, counts };
 }
 
-export function CompareAnnotation(
+export function AnnotationLogo(
 	data,
 	{
-		svgElement,
 		threshold = 500,
-		groupRobust = false,
+		robustOnly = false,
 		marginTop = 20, // the top margin, in pixels
 		marginRight = 0, // the right margin, in pixels
 		marginBottom = 10, // the bottom margin, in pixels
@@ -50,7 +49,7 @@ export function CompareAnnotation(
 	};
 
 	let grouped = d3.rollup(
-		groupRobust
+		robustOnly
 			? d3.sort(annotation.data, (d) => d.robust === true && -d.total)
 			: d3.sort(annotation.data, (d) => -d.total),
 		(g) =>
@@ -64,12 +63,12 @@ export function CompareAnnotation(
 				},
 				{ total: 0, counts: Array(g[0].counts.length).fill(0) },
 			),
-		groupRobust
+		robustOnly
 			? (d) =>
 				d.robust === false
 					? "not-robust"
-					: (d.total < threshold ? "other" : d.label)
-			: (d) => (d.total < threshold ? "other" : d.label),
+					: (d.total <= threshold ? "other" : d.label)
+			: (d) => (d.total <= threshold ? "other" : d.label),
 	);
 
 	let counts = Array.from(grouped.values());
@@ -90,7 +89,7 @@ export function CompareAnnotation(
 	let yScale = d3.scaleLinear(yDomain, yRangeTop);
 	let yAxis = d3.axisLeft(yScale).ticks(height / 100);
 
-	let svg = (svgElement ? d3.select(svgElement) : d3.create("svg"))
+	let svg = d3.create("svg")
 		.attr("width", width)
 		.attr("height", height)
 		.attr("viewBox", [0, 0, width, height])
@@ -151,81 +150,16 @@ export function CompareAnnotation(
 		.selectAll("rect")
 		.data((i) => {
 			let normalized = counts[i].counts.map((count) => {
-				return count / counts[i].total; // -1 - 1
-				// return (x + 1) / 2; // 0 - 1
+				return count / counts[i].total; // scale between (-1, 1)
 			});
 			return normalized;
 		})
 		.join("rect")
-		.attr("fill", (normed) => colorScale((normed + 1) / 2)) // 0 - 1
+		.attr("fill", (normed) => colorScale((normed + 1) / 2)) // interpolate (-1, 1) => (0, 1)
 		.attr("y", (_, i) => yScale(annotation.markers[i]))
 		.attr("x", 0)
 		.attr("height", yScale.bandwidth())
 		.attr("width", (normed) => lastScaleX(Math.abs(normed)));
 
 	return svg.node();
-}
-
-export function render(root, { dataJson, width, height }) {
-  let data = JSON.parse(dataJson);
-	let labelLevel = 0;
-	let props = { threshold: 10, groupRobust: false, width, height };
-
-	function trimLabels(data, level) {
-		if (level === 0) return data;
-		return data.map((d) => {
-			let parts = d.label.split(/(\w+[\-|\+])/).filter(Boolean);
-			let label = parts.slice(0, -level).join("");
-			return { label, count: d.count };
-		});
-	}
-
-	function redraw() {
-		if (data.length === 0) return;
-		let svg = CompareAnnotation(trimLabels(data, labelLevel), props);
-		root.lastChild?.tagName === "svg" && root.removeChild(root.lastChild);
-		root.appendChild(svg);
-	}
-
-	let s1 = Object.assign(document.createElement("input"), {
-		type: "range",
-		min: 0,
-		max: Math.max.apply(null, data.map((d) => d.count)) + 1,
-		value: props.threshold,
-	});
-
-	let s2 = Object.assign(document.createElement("input"), {
-		type: "range",
-		min: 0,
-		max: data.length === 0 ? 0 : labelParts(data[0].label).length - 1,
-		value: 0,
-	});
-
-	let toggle = Object.assign(document.createElement("button"), {
-		innerHTML: "Robust Only",
-	});
-
-	root.appendChild(s1);
-	root.appendChild(s2);
-	root.appendChild(toggle);
-
-	redraw();
-
-	s1.addEventListener("input", (e) => {
-		props.threshold = +e.target.value;
-		redraw();
-	});
-
-	s2.addEventListener("input", (e) => {
-		labelLevel = +e.target.value;
-		redraw();
-	});
-
-	toggle.addEventListener("click", (e) => {
-		props.groupRobust = !props.groupRobust;
-		toggle.innerHTML = toggle.innerHTML === "Robust Only"
-			? "All"
-			: "Robust Only";
-		redraw();
-	});
 }

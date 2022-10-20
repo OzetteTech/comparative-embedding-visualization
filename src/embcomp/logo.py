@@ -1,15 +1,14 @@
 import json
 import pathlib
 import uuid
-from typing import Union
+import re
 
 import IPython.display
+import ipywidgets
 import jinja2
-import pandas as pd
+import traitlets
 
 here = pathlib.Path(__file__).parent
-
-DEV = False
 
 # fmt: off
 HTML_TEMPLATE_DEV = jinja2.Template("""
@@ -39,38 +38,57 @@ iframe {
 HTML_TEMPLATE = jinja2.Template("""
 <div id="{{ id }}"></div>
 <script type="module">
-""" + (here / "static" / "logo.js").read_text() + """
-    render(document.getElementById('{{ id }}'), {
-        dataJson: `{{ data }}`,
-        height: {{ height }},
-        width: {{ width }},
-    });
+""" + (here / "static" / "AnnotationLogo.js").read_text() + """
+    let data = JSON.parse(`{{ data }}`);
+    let options = JSON.parse(`{{ options }}`);
+    document.getElementById("{{ id }}")?.appendChild(
+        AnnotationLogo(data, options)
+    );
 </script>
 """)
 # fmt: on
 
 
-def label_comparer(
-    labels: pd.Series,
-    robust: Union[set[str], None] = None,
-    width: int = 300,
-    height: int = 400,
-    empty: bool = False,
-    **kwargs
-):
-    if empty:
-        data = [dict(label=labels[0], count=0)]
-    else:
-        counts = labels.value_counts(sort=False)
-        robust = robust or set(counts.keys())
-        data = [dict(label=k, count=v, robust=(k in robust)) for k, v in counts[counts > 0].items()]  # type: ignore
+def label_parts(label: str) -> list[str]:
+    return [l for l in re.split("(\w+[\-|\+])", label) if l]
 
-    html = (HTML_TEMPLATE_DEV if DEV else HTML_TEMPLATE).render(
-        id=uuid.uuid4().hex,
-        data=json.dumps(data),
-        width=width,
-        height=height,
-        **kwargs,
-    )
 
-    return IPython.display.HTML(html)
+def trim_labels(data, level: int):
+    if level == 0:
+        return data
+    return [
+        dict(
+            label="".join(label_parts(e["label"])[:-level]),
+            count=e["count"],
+        )
+        for e in data
+    ]
+
+
+class AnnotationLogo(ipywidgets.Output):
+    data = traitlets.List(traitlets.Dict(), minlen=1)
+    threshold = traitlets.Int()
+    label_level = traitlets.Int()
+
+    def __init__(self, data, threshold: int = 10, label_level: int = 0, **options):
+        super().__init__()
+        self._options = options
+        self.data = data
+        self.threshold = threshold
+        self.label_level = label_level
+
+    @property
+    def levels(self):
+        return len(label_parts(self.data[0]["label"])) - 1
+
+    @traitlets.observe("threshold", "data", "label_level")
+    def _render(self, _change):
+        self.clear_output()
+        options = {"threshold": self.threshold, **self._options}
+        html = HTML_TEMPLATE.render(
+            id=uuid.uuid4().hex,
+            data=json.dumps(trim_labels(self.data, self.label_level)),
+            options=json.dumps(options),
+        )
+        with self:
+            IPython.display.display(IPython.display.HTML(html))

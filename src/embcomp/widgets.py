@@ -1,5 +1,3 @@
-from typing import Any
-import IPython.display
 import ipywidgets
 import jscatter
 import numpy as np
@@ -7,16 +5,16 @@ import numpy.typing as npt
 import pandas as pd
 
 import embcomp.colors as colors
-import embcomp.metrics as metrics
-from embcomp.logo import label_comparer
+from embcomp.logo import AnnotationLogo
+
 
 Embedding = tuple[npt.ArrayLike, npt.NDArray]  # x y  # knn_indices
 
 CATEGORICAL_COLORMAP = (
     [colors.gray_dark]
-    + colors.glasbey_light
-    + colors.glasbey_light
-    + colors.glasbey_light
+    + jscatter.glasbey_light
+    + jscatter.glasbey_light
+    + jscatter.glasbey_light
 )
 
 
@@ -36,7 +34,6 @@ def _init_df(
             ),
         }
     )
-
 
 def pairwise(
     A: Embedding,
@@ -65,34 +62,55 @@ def pairwise(
     for prop in ("selection", "hovering"):
         ipywidgets.jslink((left.widget, prop), (right.widget, prop))
 
-    slider = ipywidgets.SelectionSlider(
-        options=range(10),
-        orientation="vertical",
+    EMPTY_DATA = [dict(label=str(labels[0]), count=0)]
+    logo = AnnotationLogo(data=EMPTY_DATA)
+
+    label_slider = ipywidgets.IntSlider(
+        description="label level",
+        min=0,
+        max=logo.levels,
     )
 
-    logo = ipywidgets.Output()
-    robust_labels = set(labels[robust].unique()) # type: ignore
-    with logo:
-        IPython.display.display(
-            label_comparer(labels, empty=True)
-        )
+    threshold = ipywidgets.IntSlider(
+        description="threshold",
+        value=100,
+        min=0,
+        max=1000,
+    )
 
-    @logo.capture()
-    def handle_change(change):
+    robust_labels = set(labels[robust].unique())  # type: ignore
+
+    def selection_change(change):
         if change.new is None:
             return
-        subset: pd.Series = labels[change.new] # type: ignore
-        if len(subset) == 0:
+
+        if len(change.new) == 0:
+            logo.data = EMPTY_DATA
             return
-        logo.clear_output()
-        IPython.display.display(label_comparer(subset, robust_labels))
 
-    left.widget.observe(handle_change, names="selection")  # type: ignore
+        counts = labels[change.new].value_counts(sort=False)  # type: ignore
 
-    return ipywidgets.GridBox(
-        children=[left.show(), right.show(), slider, logo],
+        logo.data = [
+            dict(label=k, count=v, robust=(k in robust_labels))  # type: ignore
+            for k, v in counts[counts > 0].items()  # type: ignore
+        ]
+
+        threshold.max = max(l["count"] for l in logo.data)
+        logo.threshold = threshold.value = threshold.max
+
+    left.widget.observe(selection_change, names="selection")  # type: ignore
+
+    ipywidgets.link((logo, "threshold"), (threshold, "value"))
+    ipywidgets.link((logo, "label_level"), (label_slider, "value"))
+
+    controls = ipywidgets.VBox([label_slider, threshold])
+
+    widget = ipywidgets.GridBox(
+        children=[left.show(), right.show(), controls, logo],
         layout=ipywidgets.Layout(
-            grid_template_columns="1fr 1fr 0.1fr",
+            grid_template_columns="1fr 1fr",
             grid_template_rows=f"{row_height}px " * 2,
         ),
     )
+
+    return widget
