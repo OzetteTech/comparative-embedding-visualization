@@ -66,20 +66,20 @@ def trim_labels(data, level: int):
 
 
 class AnnotationLogo(ipywidgets.Output):
-    data = traitlets.List(traitlets.Dict(), minlen=1)
+    counts = traitlets.List(traitlets.Dict(), minlen=1)
     threshold = traitlets.Int()
     label_level = traitlets.Int()
 
-    def __init__(self, data, threshold: int = 10, label_level: int = 0, **options):
+    def __init__(self, counts, threshold: int = 10, label_level: int = 0, **options):
         super().__init__()
         self._options = options
-        self.data = data
+        self.counts = counts
         self.threshold = threshold
         self.label_level = label_level
 
     @property
     def levels(self):
-        return len(label_parts(self.data[0]["label"])) - 1
+        return len(label_parts(self.counts[0]["label"])) - 1
 
     @traitlets.observe("threshold", "data", "label_level")
     def _render(self, _change):
@@ -87,7 +87,7 @@ class AnnotationLogo(ipywidgets.Output):
         options = {"threshold": self.threshold, **self._options}
         html = HTML_TEMPLATE.render(
             id=uuid.uuid4().hex,
-            data=json.dumps(trim_labels(self.data, self.label_level)),
+            data=json.dumps(trim_labels(self.counts, self.label_level)),
             options=json.dumps(options),
         )
         with self:

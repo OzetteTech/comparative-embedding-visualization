@@ -63,7 +63,7 @@ def pairwise(
         ipywidgets.jslink((left.widget, prop), (right.widget, prop))
 
     EMPTY_DATA = [dict(label=str(labels[0]), count=0)]
-    logo = AnnotationLogo(data=EMPTY_DATA)
+    logo = AnnotationLogo(counts=EMPTY_DATA)
 
     label_slider = ipywidgets.IntSlider(
         description="label level",
@@ -85,17 +85,17 @@ def pairwise(
             return
 
         if len(change.new) == 0:
-            logo.data = EMPTY_DATA
+            logo.counts = EMPTY_DATA
             return
 
         counts = labels[change.new].value_counts(sort=False)  # type: ignore
 
-        logo.data = [
+        logo.counts = [
             dict(label=k, count=v, robust=(k in robust_labels))  # type: ignore
             for k, v in counts[counts > 0].items()  # type: ignore
         ]
 
-        threshold.max = max(l["count"] for l in logo.data)
+        threshold.max = max(l["count"] for l in logo.counts)
         logo.threshold = threshold.value = threshold.max
 
     left.widget.observe(selection_change, names="selection")  # type: ignore
