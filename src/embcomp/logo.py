@@ -81,7 +81,7 @@ class AnnotationLogo(ipywidgets.Output):
     def levels(self):
         return len(label_parts(self.counts[0]["label"])) - 1
 
-    @traitlets.observe("threshold", "data", "label_level")
+    @traitlets.observe("threshold", "counts", "label_level")
     def _render(self, _change):
         self.clear_output()
         options = {"threshold": self.threshold, **self._options}
