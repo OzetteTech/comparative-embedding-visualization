@@ -1,39 +1,31 @@
+import itertools
+
 import ipywidgets
 import jscatter
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
-import embcomp.colors as colors
-from embcomp.logo import AnnotationLogo
+import dataclasses
 
+from embcomp.logo import AnnotationLogo
 
 Embedding = tuple[npt.ArrayLike, npt.NDArray]  # x y  # knn_indices
 
-CATEGORICAL_COLORMAP = (
-    [colors.gray_dark]
-    + jscatter.glasbey_light
-    + jscatter.glasbey_light
-    + jscatter.glasbey_light
-)
 
+@dataclasses.dataclass
+class PairwiseComponent:
+    scatter: jscatter.Scatter
+    logo: AnnotationLogo
 
-def _init_df(
-    X: npt.ArrayLike, labels: pd.Series, robust: npt.NDArray[np.bool_]
-) -> pd.DataFrame:
-    xy = np.array(X)
-    return pd.DataFrame(
-        {
-            "x": xy[:, 0],
-            "y": xy[:, 1],
-            "label": labels,
-            "robust": robust,
-            "robust_label": pd.Series(
-                np.where(robust, labels, "0_0_0_0_0"),
-                dtype="category",
-            ),
-        }
-    )
+    def __post_init__(self):
+        self.link = ipywidgets.link(
+            (self.scatter.widget, "selection"), (self.logo, "selection")
+        )
+
+    def show(self):
+        return ipywidgets.VBox([self.scatter.show(), self.logo])
+
 
 def pairwise(
     A: Embedding,
@@ -44,76 +36,67 @@ def pairwise(
     row_height = 600
 
     left, right = (
-        jscatter.Scatter(
-            data=_init_df(xy, labels, robust),
-            x="x",
-            y="y",
-            color_by="robust_label",
-            color_map=CATEGORICAL_COLORMAP,
-            background_color="black",
-            axes=False,
-            opacity_unselected=0.05,
-            height=row_height,
+        PairwiseComponent(
+            scatter=jscatter.Scatter(
+                data=pd.DataFrame({"x": np.array(xy)[:, 0], "y": np.array(xy)[:, 1]}),
+                x="x",
+                y="y",
+                background_color="black",
+                axes=False,
+                opacity_unselected=0.05,
+                height=row_height,
+            ),
+            logo=AnnotationLogo(labels),
         )
         for xy in (A[0], B[0])
     )
 
-    # sync scatters
-    for prop in ("selection", "hovering"):
-        ipywidgets.jslink((left.widget, prop), (right.widget, prop))
-
-    EMPTY_DATA = [dict(label=str(labels[0]), count=0)]
-    logo = AnnotationLogo(
-        counts=EMPTY_DATA,
-        height=row_height,
+    selection_type = ipywidgets.RadioButtons(
+        options=["synced", "neighbors"],
+        value="synced",
+        description="selection",
     )
 
-    label_slider = ipywidgets.IntSlider(
-        description="label level",
-        min=0,
-        max=logo.levels,
+    link = ipywidgets.link(
+        (left.logo, "selection"), (right.logo, "selection")
     )
 
-    threshold = ipywidgets.IntSlider(
-        description="threshold",
-        value=100,
-        min=0,
-        max=1000,
-    )
+    def handle_selection_change(change):
+        nonlocal link
+        if change.new == "synced":
+            link.link()
+        else:
+            link.unlink()
 
-    robust_labels = set(labels[robust].unique())  # type: ignore
+    selection_type.observe(handle_selection_change, names="value")  # type: ignore
 
-    def selection_change(change):
-        if change.new is None:
-            return
+    def apply_colormap(new_labels: pd.Series):
+        non_robust_label = "0_0_0_0_0"
+        robust_labels = pd.Series(
+            np.where(robust, new_labels, non_robust_label),  # type: ignore
+            dtype="category",
+        )
+        colormap = dict(
+            zip(robust_labels.cat.categories, itertools.cycle(jscatter.glasbey_dark))
+        )
+        colormap.update({non_robust_label: "#333333"})
+        for cmp in (left, right):
+            assert cmp.scatter._data is not None
+            cmp.scatter._data["label"] = robust_labels
+            cmp.scatter.color(by="label", map=colormap)
 
-        if len(change.new) == 0:
-            logo.counts = EMPTY_DATA
-            return
+    # TODO: sync move label trimmer up one level
+    def on_labels_change(change):
+        new_labels = change.new if hasattr(change, "new") else labels
+        apply_colormap(new_labels)
 
-        counts = labels[change.new].value_counts(sort=False)  # type: ignore
-
-        logo.counts = [
-            dict(label=k, count=v, robust=(k in robust_labels))  # type: ignore
-            for k, v in counts[counts > 0].items()  # type: ignore
-        ]
-
-        threshold.max = max(l["count"] for l in logo.counts)
-        threshold.value = threshold.max
-
-    left.widget.observe(selection_change, names="selection")  # type: ignore
-
-    ipywidgets.link((logo, "threshold"), (threshold, "value"))
-    ipywidgets.link((logo, "label_level"), (label_slider, "value"))
-
-    controls = ipywidgets.VBox([label_slider, threshold])
-
-    widget = ipywidgets.GridBox(
-        children=[left.show(), right.show(), controls, logo],
+    main = ipywidgets.GridBox(
+        children=[left.show(), right.show()],
         layout=ipywidgets.Layout(
             grid_template_columns="1fr 1fr",
-            grid_template_rows=f"{row_height}px " * 2,
+            grid_template_rows=f"{row_height * 2}px",
         ),
     )
 
-    return widget
+    on_labels_change(None)
+    return ipywidgets.VBox([selection_type, main])
