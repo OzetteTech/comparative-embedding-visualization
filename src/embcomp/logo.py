@@ -36,7 +36,14 @@ iframe {
 
 # fmt: off
 HTML_TEMPLATE = jinja2.Template("""
-<div id="{{ id }}"></div>
+<style>
+    .annotation-logo {
+        // background-color: #e6ffec;
+        padding-right: 0;
+        height: unset;
+    }
+</style>
+<div id="{{ id }}" class="annotation-logo"></div>
 <script type="module">
 """ + (here / "static" / "AnnotationLogo.js").read_text() + """
     let data = JSON.parse(`{{ data }}`);

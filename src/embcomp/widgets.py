@@ -63,7 +63,10 @@ def pairwise(
         ipywidgets.jslink((left.widget, prop), (right.widget, prop))
 
     EMPTY_DATA = [dict(label=str(labels[0]), count=0)]
-    logo = AnnotationLogo(counts=EMPTY_DATA)
+    logo = AnnotationLogo(
+        counts=EMPTY_DATA,
+        height=row_height,
+    )
 
     label_slider = ipywidgets.IntSlider(
         description="label level",

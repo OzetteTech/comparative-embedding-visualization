@@ -21,7 +21,7 @@ export function AnnotationLogo(
 		threshold = 500,
 		robustOnly = false,
 		marginTop = 20, // the top margin, in pixels
-		marginRight = 0, // the right margin, in pixels
+		marginRight = 10, // the right margin, in pixels
 		marginBottom = 10, // the bottom margin, in pixels
 		marginLeft = 100, // the left margin, in pixels
 		width = 640, // the outer width of the chart, in pixels
@@ -32,11 +32,15 @@ export function AnnotationLogo(
 	} = {},
 ) {
 	let xRange = [marginLeft, width - marginRight]; // [left, right]
-	let yRange = [height - marginBottom, marginTop]; // [bottom, top]
 
-	let mid = (yRange[0] - yRange[1]) * 0.25 + yRange[1];
-	let yRangeTop = [mid, yRange[1]];
-	let yRangeBottom = [yRange[0], mid + 10];
+	// helper to derive y-scale ranges
+	let y = d3
+		.scaleLinear()
+		.domain([0, 1])
+		.range([marginTop, height - marginBottom]);
+
+	let yRangeBar = [y(0.25), y(0)];
+	let yRangeCell = [y(1), y(0.25) + 10];
 
 	let annotation = {
 		markers: parseEntry(data[0]).markers,
@@ -86,14 +90,14 @@ export function AnnotationLogo(
 
 	// Construct scales, axes, and formats.
 	let xScale = d3.scaleBand(xDomain, xRange).padding(xPadding);
-	let yScale = d3.scaleLinear(yDomain, yRangeTop);
+	let yScale = d3.scaleLinear(yDomain, yRangeBar);
 	let yAxis = d3.axisLeft(yScale).ticks(height / 100);
 
 	let svg = d3.create("svg")
 		.attr("width", width)
 		.attr("height", height)
-		.attr("viewBox", [0, 0, width, height])
-		.attr("style", "max-width: 100%; height: auto; height: intrinsic;");
+		.attr("viewBox", [0, 0, width, height]);
+		// .attr("style", "max-width: 100%; height: auto; height: intrinsic;");
 
 	svg
 		.append("g")
@@ -121,7 +125,7 @@ export function AnnotationLogo(
 
 	// cell
 	yScale = d3
-		.scaleBand([...annotation.markers].reverse(), yRangeBottom)
+		.scaleBand([...annotation.markers].reverse(), yRangeCell)
 		.padding(0.1);
 	yAxis = d3.axisLeft(yScale).ticks(height / 40);
 
