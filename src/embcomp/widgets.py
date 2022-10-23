@@ -127,6 +127,11 @@ def assert_pointwise_correspondence(a: Embedding, b: Embedding):
 def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     assert_pointwise_correspondence(a, b)
 
+    robust_only = ipywidgets.Checkbox(
+        False,
+        description="robust only"
+    )
+
     # can use one set of labels since they share correspondence
     labeler = Labeler(a.labels)
 
@@ -274,7 +279,7 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # LABELS END
 
     header = ipywidgets.HBox(
-        [label_slider, selection_type, color_by, metric],
+        [label_slider, selection_type, color_by, metric, robust_only],
         layout=ipywidgets.Layout(width="80%"),
     )
 
