@@ -1,8 +1,7 @@
+import numba as nb
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-
-import numba as nb
 from sklearn.neighbors import NearestNeighbors
 
 
@@ -68,7 +67,9 @@ def _count_neighbor_labels(knn_indices: npt.NDArray, codes: npt.NDArray) -> npt.
     return dist
 
 
-def count_neighbor_labels(knn_indices: npt.NDArray, labels: pd.Series) -> npt.NDArray:
+def count_neighbor_labels(
+    knn_indices: npt.NDArray[np.int_], labels: pd.Series
+) -> npt.NDArray:
     return _count_neighbor_labels(knn_indices, np.array(labels.cat.codes))
 
 

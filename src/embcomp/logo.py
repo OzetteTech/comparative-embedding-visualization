@@ -74,25 +74,27 @@ def trim_labels(data, level: int):
         for e in data
     ]
 
+
 class Labeler(traitlets.HasTraits):
-    labels = traittypes.Series(default_value=pd.Series([], dtype="object"))
+    labels = traittypes.Series(pd.Series([], dtype="object"))
     level = traitlets.Int()
 
     def __init__(self, labels: pd.Series, level: int = 0):
         self._labels = labels
         super().__init__(labels=labels, level=level)
+        self.labels = labels
 
     @traitlets.observe("level")
     def _trim_labels(self, change):
-        assert change.name == "level"
-        level = change.new
-        if level == 0:
-            self.labels = self._labels
-            return
+        print("Labels UPDATE")
         self.labels = (
-            self._labels.str.split("(\w+[\+|\-])", regex=True)
-            .str.slice(0, -level * 2)
-            .str.join("")
+            self._labels
+            if change.new == 0
+            else (
+                self._labels.str.split("(\w+[\+|\-])", regex=True)
+                .str.slice(0, -change.new * 2)
+                .str.join("")
+            )
         )
 
     @property
@@ -105,7 +107,9 @@ class LogoHTML(ipywidgets.Output):
     counts = traitlets.List(traitlets.Dict())
     threshold = traitlets.Int()
 
-    def __init__(self, counts: Union[None, list[dict]] = None, threshold: int = 10, **options):
+    def __init__(
+        self, counts: Union[None, list[dict]] = None, threshold: int = 10, **options
+    ):
         super().__init__()
         self._options = options
         self.counts = counts or []
@@ -129,31 +133,19 @@ class LogoHTML(ipywidgets.Output):
 
 class AnnotationLogo(ipywidgets.VBox):
     labels = traittypes.Series(default_value=pd.Series([], dtype="object"))
-    selection = traittypes.Array(None, allow_none = True)
+    selection = traittypes.Array(None, allow_none=True)
 
     def __init__(self, labels, **kwargs):
-        self._labeler = Labeler(labels)
         self._logo = LogoHTML(**kwargs)
-        self._label_slider = ipywidgets.IntSlider(
-            description="label level",
-            min=0,
-            max=self._labeler.levels,
-        )
         self._threshold = ipywidgets.IntSlider(
             description="threshold",
             value=100,
             min=0,
             max=1000,
         )
-
-        self.labels = self._labeler.labels
+        self.labels = labels
         ipywidgets.link((self._logo, "threshold"), (self._threshold, "value"))
-        ipywidgets.link((self._labeler, "level"), (self._label_slider, "value"))
-        ipywidgets.link((self._labeler, "labels"), (self, "labels"))
-
-        controls = ipywidgets.HBox([self._label_slider, self._threshold])
-
-        super().__init__([controls, self._logo])
+        super().__init__([self._threshold, self._logo])
 
     @traitlets.observe("labels", "selection")
     def _selection_change(self, change):
@@ -161,9 +153,11 @@ class AnnotationLogo(ipywidgets.VBox):
         selection = change.new if change.name == "selection" else self.selection
 
         try:
-            empty = [dict(label=str(labels[0]), count=0)]
+            representative_label = str(labels[0])  # type: ignore
         except KeyError:
             return
+
+        empty = [dict(label=representative_label, count=0)]
 
         if selection is None:
             self._logo.counts = empty
