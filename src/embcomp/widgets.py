@@ -51,7 +51,6 @@ class Embedding:
 LABEL_COLUMN = "_label"
 DISTANCE_COLUMN = "_distance"
 
-
 @dataclasses.dataclass
 class PairwiseComponent:
     scatter: jscatter.Scatter
@@ -71,11 +70,13 @@ class PairwiseComponent:
 
     def color_by_labels(self):
         self._by = LABEL_COLUMN
+        self.scatter.legend(False)
         self.scatter.color(by=LABEL_COLUMN, map=self._colormap)
 
     def color_by_distances(self):
         self._by = DISTANCE_COLUMN
-        self.scatter.color(by=DISTANCE_COLUMN, map="plasma")
+        self.scatter.color(by=DISTANCE_COLUMN, map="viridis")
+        self.scatter.legend(True)
 
     @property
     def _data(self):
@@ -127,11 +128,6 @@ def assert_pointwise_correspondence(a: Embedding, b: Embedding):
 def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     assert_pointwise_correspondence(a, b)
 
-    robust_only = ipywidgets.Checkbox(
-        False,
-        description="robust only"
-    )
-
     # can use one set of labels since they share correspondence
     labeler = Labeler(a.labels)
 
@@ -151,6 +147,7 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
                 ),
                 x="x",
                 y="y",
+                legend=True,
                 background_color="black",
                 axes=False,
                 opacity_unselected=0.05,
@@ -198,10 +195,10 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
         acounts, bcounts = counts()
 
         aindex = pd.Series(left.labels, dtype="category", name="label")
-        a = pd.DataFrame(acounts, index=aindex).groupby("label").mean()
+        a = pd.DataFrame(acounts, index=aindex).groupby("label").sum()
 
         bindex = pd.Series(right.labels, dtype="category", name="label")
-        b = pd.DataFrame(bcounts, index=bindex).groupby("label").mean()
+        b = pd.DataFrame(bcounts, index=bindex).groupby("label").sum()
 
         grp_distances = rowise_cosine_similarity(a, b)
 
@@ -213,16 +210,16 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # METRIC START
     metric = ipywidgets.Dropdown(
         options=[
-            ("Jaccard", jaccard_pointwise),
-            ("Jaccard groupwise", jaccard_groupwise),
-            ("Point-Label distance", point_label),
             ("Label-Label distance", label_label),
+            ("Point-Label distance", point_label),
+            ("Jaccard groupwise", jaccard_groupwise),
+            ("Jaccard", jaccard_pointwise),
         ],
-        value=jaccard_pointwise,
+        value=label_label,
         description="metric: ",
     )
 
-    left.distances, right.distances = jaccard_pointwise()
+    left.distances, right.distances = metric.value()
 
     def on_metric_change(change):
         compute_metric = change.new
@@ -250,24 +247,49 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # COLOR END
 
     # SELECTION START
-    link = ipywidgets.link((left.logo, "selection"), (right.logo, "selection"))
+    unlink: Callable[[], None] = lambda: None
+
+    def sync():
+        nonlocal unlink
+        unlink()
+        selection_link = ipywidgets.link(
+            source=(left.logo, "selection"),
+            target=(right.logo, "selection")
+        )
+        hovering_link = ipywidgets.link(
+            source=(left.scatter.widget, "hovering"),
+            target=(right.scatter.widget, "hovering")
+        )
+        def unlink_all():
+            selection_link.unlink()
+            hovering_link.unlink()
+
+        unlink = unlink_all
+
+    def expand_neighbors():
+        nonlocal unlink
+        if unlink:
+            unlink()
+
+        def transform(selection):
+            return left.embedding.knn_indices[selection].ravel()
+
+        link = ipywidgets.link(
+            source=(left.logo, "selection"),
+            target=(right.logo, "selection"),
+            transform=(transform, transform),
+        )
+
+        unlink = link.unlink
 
     selection_type = ipywidgets.RadioButtons(
-        options=["synced", "neighbors"],
-        value="synced",
+        options=[("synced", sync), ("neighbors", expand_neighbors)],
+        value=sync,
         description="selection",
     )
 
-    def handle_selection_type_change(change):
-        nonlocal link
-        if change.new == "synced":
-            link.link()
-            link.link()
-        else:
-            link.unlink()
-            link.unlink()
-
-    selection_type.observe(handle_selection_type_change, names="value")  # type: ignore
+    selection_type.observe(lambda change: change.new(), names="value")  # type: ignore
+    sync()
     # SELECTION END
 
     # LABELS START
@@ -279,7 +301,7 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # LABELS END
 
     header = ipywidgets.HBox(
-        [label_slider, selection_type, color_by, metric, robust_only],
+        [label_slider, selection_type, color_by, metric],
         layout=ipywidgets.Layout(width="80%"),
     )
 
@@ -291,4 +313,5 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
         ),
     )
 
+    label_slider.value = labeler.levels
     return ipywidgets.VBox([header, main])

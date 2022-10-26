@@ -86,7 +86,6 @@ class Labeler(traitlets.HasTraits):
 
     @traitlets.observe("level")
     def _trim_labels(self, change):
-        print("Labels UPDATE")
         self.labels = (
             self._labels
             if change.new == 0
