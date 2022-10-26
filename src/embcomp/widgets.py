@@ -11,7 +11,7 @@ import numpy.typing as npt
 import pandas as pd
 
 import embcomp.metrics as metrics
-from embcomp.logo import AnnotationLogo, Labeler
+from embcomp.logo import AnnotationLogo, Labeler, label_parts
 
 Coordinates = npt.ArrayLike
 KnnIndices = npt.NDArray[np.int_]
@@ -293,9 +293,14 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # SELECTION END
 
     # LABELS START
+    active_labels = ipywidgets.Output()
+
+    @active_labels.capture()
     def on_labels_change(change):
         left.labels = change.new
         right.labels = change.new
+        active_labels.clear_output()
+        print("markers:", " ".join(l[:-1] for l in label_parts(change.new[0])))
 
     labeler.observe(on_labels_change, names="labels")
     # LABELS END
@@ -304,6 +309,9 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
         [label_slider, selection_type, color_by, metric],
         layout=ipywidgets.Layout(width="80%"),
     )
+
+    header = ipywidgets.VBox([header, active_labels])
+
 
     main = ipywidgets.GridBox(
         children=[left.show(), right.show()],
