@@ -4,12 +4,14 @@ from collections.abc import Callable
 from typing import Union
 
 import ipywidgets
+from joblib.externals.cloudpickle.cloudpickle import Literal
 import jscatter
 import numpy as np
 import numpy.linalg as nplg
 import numpy.typing as npt
 import pandas as pd
 import traitlets
+import traittypes
 
 import embcomp.metrics as metrics
 from embcomp.logo import AnnotationLogo, Labeler, label_parts
@@ -221,20 +223,17 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # METRIC START
     metric = ipywidgets.Dropdown(
         options=[
-            ("Label-Label distance", label_label),
-            ("Point-Label distance", point_label),
-            ("Jaccard groupwise", jaccard_groupwise),
-            ("Jaccard", jaccard_pointwise),
+            ("Label-Label similarity", label_label),
+            ("Point-Label similarity", point_label),
+            ("Groupwise Jaccard index", jaccard_groupwise),
+            ("Jaccard index", jaccard_pointwise),
         ],
         value=label_label,
         description="metric: ",
     )
 
-    left.distances, right.distances = metric.value()
-
     def on_metric_change(change):
-        compute_metric = change.new
-        left.distances, right.distances = compute_metric()
+        left.distances, right.distances = change.new()
 
     metric.observe(on_metric_change, names="value")
     # METRIC END
@@ -283,22 +282,48 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
 
     def expand_neighbors():
         nonlocal unlink
-        if unlink:
-            unlink()
+        unlink()
 
-        def transform(selection):
-            return left.embedding.knn_indices[selection].ravel()
+        def transform(cmp: PairwiseComponent):
+            def _expand_neighbors(selection):
+                return cmp.embedding.knn_indices[selection].ravel()
+
+            return _expand_neighbors
 
         link = ipywidgets.link(
             source=(left.logo, "selection"),
             target=(right.logo, "selection"),
-            transform=(transform, transform),
+            transform=(transform(left), transform(right)),
+        )
+
+        unlink = link.unlink
+
+    def expand_phenotype():
+        nonlocal unlink
+        unlink()
+
+        def transform(from_: PairwiseComponent, to_: PairwiseComponent):
+            def _expand_phenotype(base_selection):
+                from_labels = set(from_.labels[base_selection].unique())
+                from_labels.discard(NON_ROBUST_LABEL)
+                return to_.labels[to_.labels.isin(from_labels)].index
+
+            return _expand_phenotype
+
+        link = ipywidgets.link(
+            source=(left.logo, "selection"),
+            target=(right.logo, "selection"),
+            transform=(transform(left, right), transform(right, left)),
         )
 
         unlink = link.unlink
 
     selection_type = ipywidgets.RadioButtons(
-        options=[("synced", sync), ("neighbors", expand_neighbors)],
+        options=[
+            ("synced", sync),
+            ("neighbors", expand_neighbors),
+            ("phenotype", expand_phenotype),
+        ],
         value=sync,
         description="selection",
     )
@@ -313,6 +338,7 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     def on_labels_change(change):
         left.labels = change.new
         right.labels = change.new
+        left.distances, right.distances = metric.value()
         active_labels.value = "markers: " + " ".join(
             l[:-1] for l in label_parts(change.new[0])
         )
@@ -339,5 +365,7 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
         ),
     )
 
+    # initialize
     label_slider.value = labeler.levels
-    return ipywidgets.VBox([header, main])
+    left.distances, right.distances = metric.value()
+    return ipywidgets.VBox([header, main]), left, right
