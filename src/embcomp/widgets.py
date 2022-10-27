@@ -9,6 +9,8 @@ import numpy as np
 import numpy.linalg as nplg
 import numpy.typing as npt
 import pandas as pd
+import traitlets
+from scipy.spatial import Delaunay
 
 import embcomp.metrics as metrics
 from embcomp.logo import AnnotationLogo, Labeler, label_parts
@@ -51,13 +53,17 @@ class Embedding:
 LABEL_COLUMN = "_label"
 DISTANCE_COLUMN = "_distance"
 
-@dataclasses.dataclass
-class PairwiseComponent:
-    scatter: jscatter.Scatter
-    logo: AnnotationLogo
-    embedding: Embedding
 
-    def __post_init__(self):
+class PairwiseComponent(traitlets.HasTraits):
+    inverted = traitlets.Bool(False)
+
+    def __init__(
+        self, scatter: jscatter.Scatter, logo: AnnotationLogo, embedding: Embedding
+    ):
+        self.scatter = scatter
+        self.logo = logo
+        self.embedding = embedding
+
         self.link = ipywidgets.link(
             (self.scatter.widget, "selection"), (self.logo, "selection")
         )
@@ -75,8 +81,14 @@ class PairwiseComponent:
 
     def color_by_distances(self):
         self._by = DISTANCE_COLUMN
-        self.scatter.color(by=DISTANCE_COLUMN, map="viridis")
+        cmap = "viridis_r" if self.inverted else "viridis"
+        self.scatter.color(by=DISTANCE_COLUMN, map=cmap)
         self.scatter.legend(True)
+
+    @traitlets.observe("inverted")
+    def _update_colormap(self, _change):
+        if self._by == DISTANCE_COLUMN:
+            self.color_by_distances()
 
     @property
     def _data(self):
@@ -210,25 +222,26 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # METRIC START
     metric = ipywidgets.Dropdown(
         options=[
-            ("Label-Label distance", label_label),
-            ("Point-Label distance", point_label),
-            ("Jaccard groupwise", jaccard_groupwise),
-            ("Jaccard", jaccard_pointwise),
+            ("Label-Label similarity", label_label),
+            ("Point-Label similarity", point_label),
+            ("Groupwise Jaccard index", jaccard_groupwise),
+            ("Jaccard index", jaccard_pointwise),
         ],
         value=label_label,
         description="metric: ",
     )
 
-    left.distances, right.distances = metric.value()
-
     def on_metric_change(change):
-        compute_metric = change.new
-        left.distances, right.distances = compute_metric()
+        left.distances, right.distances = change.new()
 
     metric.observe(on_metric_change, names="value")
     # METRIC END
 
     # COLOR START
+    inverted = ipywidgets.Checkbox(False, description="invert colormap")
+    ipywidgets.link((left, "inverted"), (inverted, "value"))
+    ipywidgets.link((right, "inverted"), (inverted, "value"))
+
     color_by = ipywidgets.RadioButtons(
         options=["label", "metric"],
         value="label",
@@ -249,41 +262,96 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # SELECTION START
     unlink: Callable[[], None] = lambda: None
 
+    # requires point-point correspondence
     def sync():
         nonlocal unlink
         unlink()
         selection_link = ipywidgets.link(
-            source=(left.logo, "selection"),
-            target=(right.logo, "selection")
+            source=(left.logo, "selection"), target=(right.logo, "selection")
         )
         hovering_link = ipywidgets.link(
             source=(left.scatter.widget, "hovering"),
-            target=(right.scatter.widget, "hovering")
+            target=(right.scatter.widget, "hovering"),
         )
+
         def unlink_all():
             selection_link.unlink()
             hovering_link.unlink()
 
         unlink = unlink_all
 
+    # requires point-point correspondence
     def expand_neighbors():
         nonlocal unlink
-        if unlink:
-            unlink()
+        unlink()
 
-        def transform(selection):
-            return left.embedding.knn_indices[selection].ravel()
+        def transform(cmp: PairwiseComponent):
+            def _expand_neighbors(selection):
+                return cmp.embedding.knn_indices[selection].ravel()
+
+            return _expand_neighbors
 
         link = ipywidgets.link(
             source=(left.logo, "selection"),
             target=(right.logo, "selection"),
-            transform=(transform, transform),
+            transform=(transform(left), transform(right)),
+        )
+
+        unlink = link.unlink
+
+    # requires label-label correspondence
+    def expand_phenotype():
+        nonlocal unlink
+        unlink()
+
+        def transform(from_: PairwiseComponent, to_: PairwiseComponent):
+            def _expand_phenotype(base_selection):
+                # use the phenotype from logo, PairwiseComponent.labels have robust/non-robust
+                from_labels = set(from_.logo.labels[base_selection].unique())
+                return np.where(to_.logo.labels.isin(from_labels))[0]
+
+            return _expand_phenotype
+
+        link = ipywidgets.link(
+            source=(left.logo, "selection"),
+            target=(right.logo, "selection"),
+            transform=(transform(left, right), transform(right, left)),
+        )
+
+        unlink = link.unlink
+
+    # requires point-point correspondence
+    def expand_convex_hull():
+        nonlocal unlink
+        unlink()
+
+        def transform(to: PairwiseComponent):
+            coords = np.array(to.embedding.coords)
+
+            def _expand_convex_hull(from_selection):
+                if from_selection is None or len(from_selection) == 0:
+                    return []
+                hull = Delaunay(coords[from_selection])
+                in_hull = hull.find_simplex(coords) >= 0
+                return np.where(in_hull)[0]
+
+            return _expand_convex_hull
+
+        link = ipywidgets.link(
+            source=(left.logo, "selection"),
+            target=(right.logo, "selection"),
+            transform=(transform(to=right), transform(to=left)),
         )
 
         unlink = link.unlink
 
     selection_type = ipywidgets.RadioButtons(
-        options=[("synced", sync), ("neighbors", expand_neighbors)],
+        options=[
+            ("synced", sync),
+            ("neighbors", expand_neighbors),
+            ("phenotype", expand_phenotype),
+            ("neighbors convex hull", expand_convex_hull),
+        ],
         value=sync,
         description="selection",
     )
@@ -293,25 +361,29 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # SELECTION END
 
     # LABELS START
-    active_labels = ipywidgets.Output()
+    active_labels = ipywidgets.Label("markers: ")
 
-    @active_labels.capture()
     def on_labels_change(change):
         left.labels = change.new
         right.labels = change.new
-        active_labels.clear_output()
-        print("markers:", " ".join(l[:-1] for l in label_parts(change.new[0])))
+        left.distances, right.distances = metric.value()
+        active_labels.value = "markers: " + " ".join(
+            l[:-1] for l in label_parts(change.new[0])
+        )
 
     labeler.observe(on_labels_change, names="labels")
     # LABELS END
 
     header = ipywidgets.HBox(
-        [label_slider, selection_type, color_by, metric],
+        [
+            ipywidgets.VBox([label_slider, inverted]),
+            selection_type,
+            ipywidgets.VBox([color_by, metric]),
+        ],
         layout=ipywidgets.Layout(width="80%"),
     )
 
     header = ipywidgets.VBox([header, active_labels])
-
 
     main = ipywidgets.GridBox(
         children=[left.show(), right.show()],
@@ -321,5 +393,7 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
         ),
     )
 
+    # initialize
     label_slider.value = labeler.levels
-    return ipywidgets.VBox([header, main])
+    left.distances, right.distances = metric.value()
+    return ipywidgets.VBox([header, main]), left, right
