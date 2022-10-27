@@ -9,6 +9,7 @@ import numpy as np
 import numpy.linalg as nplg
 import numpy.typing as npt
 import pandas as pd
+import traitlets
 
 import embcomp.metrics as metrics
 from embcomp.logo import AnnotationLogo, Labeler, label_parts
@@ -52,13 +53,16 @@ LABEL_COLUMN = "_label"
 DISTANCE_COLUMN = "_distance"
 
 
-@dataclasses.dataclass
-class PairwiseComponent:
-    scatter: jscatter.Scatter
-    logo: AnnotationLogo
-    embedding: Embedding
+class PairwiseComponent(traitlets.HasTraits):
+    inverted = traitlets.Bool(False)
 
-    def __post_init__(self):
+    def __init__(
+        self, scatter: jscatter.Scatter, logo: AnnotationLogo, embedding: Embedding
+    ):
+        self.scatter = scatter
+        self.logo = logo
+        self.embedding = embedding
+
         self.link = ipywidgets.link(
             (self.scatter.widget, "selection"), (self.logo, "selection")
         )
@@ -76,8 +80,14 @@ class PairwiseComponent:
 
     def color_by_distances(self):
         self._by = DISTANCE_COLUMN
-        self.scatter.color(by=DISTANCE_COLUMN, map="viridis")
+        cmap = "viridis_r" if self.inverted else "viridis"
+        self.scatter.color(by=DISTANCE_COLUMN, map=cmap)
         self.scatter.legend(True)
+
+    @traitlets.observe("inverted")
+    def _update_colormap(self, _change):
+        if self._by == DISTANCE_COLUMN:
+            self.color_by_distances()
 
     @property
     def _data(self):
@@ -230,6 +240,10 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # METRIC END
 
     # COLOR START
+    inverted = ipywidgets.Checkbox(False, description="invert colormap")
+    ipywidgets.link((left, "inverted"), (inverted, "value"))
+    ipywidgets.link((right, "inverted"), (inverted, "value"))
+
     color_by = ipywidgets.RadioButtons(
         options=["label", "metric"],
         value="label",
@@ -307,7 +321,11 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # LABELS END
 
     header = ipywidgets.HBox(
-        [label_slider, selection_type, color_by, metric],
+        [
+            ipywidgets.VBox([label_slider, inverted]),
+            selection_type,
+            ipywidgets.VBox([color_by, metric]),
+        ],
         layout=ipywidgets.Layout(width="80%"),
     )
 
