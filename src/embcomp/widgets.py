@@ -304,9 +304,9 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
 
         def transform(from_: PairwiseComponent, to_: PairwiseComponent):
             def _expand_phenotype(base_selection):
-                from_labels = set(from_.labels[base_selection].unique())
-                from_labels.discard(NON_ROBUST_LABEL)
-                return to_.labels[to_.labels.isin(from_labels)].index
+                # use the phenotype from logo, PairwiseComponent.labels have robust/non-robust
+                from_labels = set(from_.logo.labels[base_selection].unique())
+                return to_.logo.labels[to_.logo.labels.isin(from_labels)].index
 
             return _expand_phenotype
 
