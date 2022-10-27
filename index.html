@@ -1,0 +1,12 @@
+<!doctype html>
+<html>
+	<div id="root"></div>
+	<script type="module">
+		import { AnnotationLogo } from "./src/embcomp/static/logo.js";
+		window.addEventListener("message", (event) => {
+			let { data, options } = event.data;
+			let logo = AnnotationLogo(JSON.parse(data),  JSON.parse(options)),
+			root.appendChild(logo);
+		});
+	</script>
+</html>

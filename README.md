@@ -1,7 +1,8 @@
 # comparative-embedding-visualization
 
-## Setup
+## setup
 
 ```sh
 conda env create --file environment.yml
 ```
+

@@ -5,4 +5,5 @@ data/
 .ipynb_checkpoints/
 *.egg-info/
 src/embcomp/_version.py
+.vite
 
