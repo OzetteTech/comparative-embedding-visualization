@@ -4,14 +4,13 @@ from collections.abc import Callable
 from typing import Union
 
 import ipywidgets
-from joblib.externals.cloudpickle.cloudpickle import Literal
 import jscatter
 import numpy as np
 import numpy.linalg as nplg
 import numpy.typing as npt
 import pandas as pd
 import traitlets
-import traittypes
+from scipy.spatial import Delaunay
 
 import embcomp.metrics as metrics
 from embcomp.logo import AnnotationLogo, Labeler, label_parts
@@ -263,6 +262,7 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     # SELECTION START
     unlink: Callable[[], None] = lambda: None
 
+    # requires point-point correspondence
     def sync():
         nonlocal unlink
         unlink()
@@ -280,6 +280,7 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
 
         unlink = unlink_all
 
+    # requires point-point correspondence
     def expand_neighbors():
         nonlocal unlink
         unlink()
@@ -298,6 +299,7 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
 
         unlink = link.unlink
 
+    # requires label-label correspondence
     def expand_phenotype():
         nonlocal unlink
         unlink()
@@ -306,7 +308,7 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
             def _expand_phenotype(base_selection):
                 # use the phenotype from logo, PairwiseComponent.labels have robust/non-robust
                 from_labels = set(from_.logo.labels[base_selection].unique())
-                return to_.logo.labels[to_.logo.labels.isin(from_labels)].index
+                return np.where(to_.logo.labels.isin(from_labels))[0]
 
             return _expand_phenotype
 
@@ -318,11 +320,37 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
 
         unlink = link.unlink
 
+    # requires point-point correspondence
+    def expand_convex_hull():
+        nonlocal unlink
+        unlink()
+
+        def transform(to: PairwiseComponent):
+            coords = np.array(to.embedding.coords)
+
+            def _expand_convex_hull(from_selection):
+                if from_selection is None or len(from_selection) == 0:
+                    return []
+                hull = Delaunay(coords[from_selection])
+                in_hull = hull.find_simplex(coords) >= 0
+                return np.where(in_hull)[0]
+
+            return _expand_convex_hull
+
+        link = ipywidgets.link(
+            source=(left.logo, "selection"),
+            target=(right.logo, "selection"),
+            transform=(transform(to=right), transform(to=left)),
+        )
+
+        unlink = link.unlink
+
     selection_type = ipywidgets.RadioButtons(
         options=[
             ("synced", sync),
             ("neighbors", expand_neighbors),
             ("phenotype", expand_phenotype),
+            ("neighbors convex hull", expand_convex_hull),
         ],
         value=sync,
         description="selection",
