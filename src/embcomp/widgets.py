@@ -208,7 +208,9 @@ def compare(a: Embedding, b: Embedding, row_height: int = 600):
         bindex = pd.Series(right.labels, dtype="category", name="label")
         b = pd.DataFrame(bcounts, index=bindex).groupby("label").sum()
 
-        grp_distances = rowise_cosine_similarity(a, b)
+        overlap = a.index.intersection(b.index)
+
+        grp_distances = rowise_cosine_similarity(a.loc[overlap], b.loc[overlap])
 
         return (
             left.labels.map(grp_distances).astype(float),
@@ -384,11 +386,13 @@ def compare(a: Embedding, b: Embedding, row_height: int = 600):
     active_labels = ipywidgets.Label("markers: ")
 
     def on_label_level_change(change):
-        labels_update = trim_label_series(a.labels, max_label_level - change.new)
-        left.labels = labels_update
-        right.labels = trim_label_series(b.labels, max_label_level - change.new)
+        left_new = trim_label_series(a.labels, max_label_level - change.new)
+        right_new = trim_label_series(b.labels, max_label_level - change.new)
+        left.labels = left_new
+        right.labels = right_new
+        left.distances, right.distances = metric.value()
         active_labels.value = "markers: " + " ".join(
-            l.name for l in parse_label(labels_update[0])
+            l.name for l in parse_label(left_new[0])
         )
 
     label_slider.observe(on_label_level_change, names="value")
@@ -415,5 +419,6 @@ def compare(a: Embedding, b: Embedding, row_height: int = 600):
 
     # initialize
     label_slider.value = 0
-    # left.distances, right.distances = metric.value()
-    return ipywidgets.VBox([header, main])
+    left.distances, right.distances = metric.value()
+    return ipywidgets.VBox([header, main]), left, right
+
