@@ -145,11 +145,16 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
 
     label_slider = ipywidgets.IntSlider(
         description="label level:",
+        value=labeler.levels,
         min=0,
         max=labeler.levels,
     )
 
-    ipywidgets.link((label_slider, "value"), (labeler, "level"))
+    ipywidgets.dlink(
+        (label_slider, "value"),
+        (labeler, "level"),
+        transform=lambda level: labeler.levels - level,
+    )
 
     left, right = (
         PairwiseComponent(
@@ -394,6 +399,6 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
     )
 
     # initialize
-    label_slider.value = labeler.levels
+    label_slider.value = 0
     left.distances, right.distances = metric.value()
     return ipywidgets.VBox([header, main]), left, right
