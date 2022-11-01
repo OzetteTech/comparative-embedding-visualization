@@ -1,8 +1,9 @@
+import dataclasses
 import json
 import pathlib
 import re
 import uuid
-from typing import Union
+from typing import Literal, Union
 
 import IPython.display
 import ipywidgets
@@ -59,47 +60,41 @@ HTML_TEMPLATE = jinja2.Template("""
 # fmt: on
 
 
-def label_parts(label: str) -> list[str]:
-    return [l for l in re.split("(\w+[\-|\+])", label) if l]
+@dataclasses.dataclass
+class Marker:
+    name: str
+    annotation: Literal["+", "-"]
+
+    def __str__(self) -> str:
+        return self.name + self.annotation
+
+
+Annotation = list[Marker]
+
+
+def parse_label(label: str) -> Annotation:
+    return [Marker(l[:-1], l[-1]) for l in re.split("(\w+[\-|\+])", label) if l]
+
+
+def trim_label(label: str, level: int):
+    annotation = parse_label(label)[:-level]
+    return "".join(map(str, annotation))
 
 
 def trim_labels(data, level: int):
     if level == 0:
         return data
-    return [
-        dict(
-            label="".join(label_parts(e["label"])[:-level]),
-            count=e["count"],
-        )
-        for e in data
-    ]
+    return [dict(label=trim_label(e["label"], level), count=e["count"]) for e in data]
 
 
-class Labeler(traitlets.HasTraits):
-    labels = traittypes.Series(pd.Series([], dtype="object"))
-    level = traitlets.Int()
-
-    def __init__(self, labels: pd.Series, level: int = 0):
-        self._labels = labels
-        super().__init__(labels=labels, level=level)
-        self.labels = labels
-
-    @traitlets.observe("level")
-    def _trim_labels(self, change):
-        self.labels = (
-            self._labels
-            if change.new == 0
-            else (
-                self._labels.str.split("(\w+[\+|\-])", regex=True)
-                .str.slice(0, -change.new * 2)
-                .str.join("")
-            )
-        )
-
-    @property
-    def levels(self):
-        label = str(self._labels[0])
-        return len(label_parts(label)) - 1
+def trim_label_series(labels: pd.Series, level: int):
+    if level == 0:
+        return labels
+    return (
+        labels.str.split("(\w+[\+|\-])", regex=True)
+        .str.slice(0, -level * 2)
+        .str.join("")
+    )
 
 
 class LogoHTML(ipywidgets.Output):

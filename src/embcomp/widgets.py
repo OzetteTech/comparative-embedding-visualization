@@ -1,7 +1,6 @@
 import dataclasses
 import itertools
-from collections.abc import Callable
-from typing import Union
+from typing import Callable, Union
 
 import ipywidgets
 import jscatter
@@ -13,14 +12,12 @@ import traitlets
 from scipy.spatial import Delaunay
 
 import embcomp.metrics as metrics
-from embcomp.logo import AnnotationLogo, Labeler, label_parts
+from embcomp.logo import AnnotationLogo, parse_label, trim_label_series
 
 Coordinates = npt.ArrayLike
 KnnIndices = npt.NDArray[np.int_]
 Labels = pd.Series
 Distances = npt.NDArray[np.float_]
-
-DistanceMetric = Callable[[KnnIndices, KnnIndices], Distances]
 
 NON_ROBUST_LABEL = "0_0_0_0_0"
 
@@ -126,34 +123,28 @@ class PairwiseComponent(traitlets.HasTraits):
             self.color_by_labels()
 
 
-def assert_pointwise_correspondence(a: Embedding, b: Embedding):
-    assert np.array_equal(a.labels, b.labels) and (
+def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
+    return np.array_equal(a.labels, b.labels) and (
         (a.robust is None and b.robust is None)
         or (
             a.robust is not None
             and b.robust is not None
             and np.array_equal(a.robust, b.robust)
         )
-    ), "label-only correspondence not currently supported."
+    )
 
 
-def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
-    assert_pointwise_correspondence(a, b)
+def compare(a: Embedding, b: Embedding, row_height: int = 600):
+    pointwise_correspondence = has_pointwise_correspondence(a, b)
 
-    # can use one set of labels since they share correspondence
-    labeler = Labeler(a.labels)
+    # representative label
+    max_label_level = len(parse_label(a.labels[0])) - 1
 
     label_slider = ipywidgets.IntSlider(
         description="label level:",
-        value=labeler.levels,
+        value=max_label_level,
         min=0,
-        max=labeler.levels,
-    )
-
-    ipywidgets.dlink(
-        (label_slider, "value"),
-        (labeler, "level"),
-        transform=lambda level: labeler.levels - level,
+        max=max_label_level,
     )
 
     left, right = (
@@ -225,13 +216,22 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
         )
 
     # METRIC START
+
+    metric_options: list[tuple[str, Callable]] = [
+        ("Label-Label similarity", label_label)
+    ]
+
+    if pointwise_correspondence:
+        metric_options.extend(
+            [
+                ("Point-Label similarity", point_label),
+                ("Groupwise Jaccard index", jaccard_groupwise),
+                ("Jaccard index", jaccard_pointwise),
+            ]
+        )
+
     metric = ipywidgets.Dropdown(
-        options=[
-            ("Label-Label similarity", label_label),
-            ("Point-Label similarity", point_label),
-            ("Groupwise Jaccard index", jaccard_groupwise),
-            ("Jaccard index", jaccard_pointwise),
-        ],
+        options=metric_options,
         value=label_label,
         description="metric: ",
     )
@@ -266,6 +266,10 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
 
     # SELECTION START
     unlink: Callable[[], None] = lambda: None
+
+    def independent():
+        nonlocal unlink
+        unlink()
 
     # requires point-point correspondence
     def sync():
@@ -350,33 +354,44 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
 
         unlink = link.unlink
 
-    selection_type = ipywidgets.RadioButtons(
-        options=[
+    if pointwise_correspondence:
+        initial_selection = sync
+        selection_type_options = [
             ("synced", sync),
+            ("independent", independent),
             ("neighbors", expand_neighbors),
             ("phenotype", expand_phenotype),
             ("neighbors convex hull", expand_convex_hull),
-        ],
-        value=sync,
+        ]
+    else:
+        initial_selection = independent
+        selection_type_options = [
+            ("independent", independent),
+            ("phenotype", expand_phenotype),
+        ]
+
+    selection_type = ipywidgets.RadioButtons(
+        options=selection_type_options,
+        value=initial_selection,
         description="selection",
     )
 
     selection_type.observe(lambda change: change.new(), names="value")  # type: ignore
-    sync()
+    initial_selection()
     # SELECTION END
 
     # LABELS START
     active_labels = ipywidgets.Label("markers: ")
 
-    def on_labels_change(change):
-        left.labels = change.new
-        right.labels = change.new
-        left.distances, right.distances = metric.value()
+    def on_label_level_change(change):
+        labels_update = trim_label_series(a.labels, max_label_level - change.new)
+        left.labels = labels_update
+        right.labels = trim_label_series(b.labels, max_label_level - change.new)
         active_labels.value = "markers: " + " ".join(
-            l[:-1] for l in label_parts(change.new[0])
+            l.name for l in parse_label(labels_update[0])
         )
 
-    labeler.observe(on_labels_change, names="labels")
+    label_slider.observe(on_label_level_change, names="value")
     # LABELS END
 
     header = ipywidgets.HBox(
@@ -400,5 +415,5 @@ def pairwise(a: Embedding, b: Embedding, row_height: int = 600):
 
     # initialize
     label_slider.value = 0
-    left.distances, right.distances = metric.value()
-    return ipywidgets.VBox([header, main]), left, right
+    # left.distances, right.distances = metric.value()
+    return ipywidgets.VBox([header, main])
