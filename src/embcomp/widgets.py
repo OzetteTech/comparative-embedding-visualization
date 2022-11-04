@@ -5,7 +5,6 @@ from typing import Callable, Union
 import ipywidgets
 import jscatter
 import numpy as np
-import numpy.linalg as nplg
 import numpy.typing as npt
 import pandas as pd
 import traitlets
@@ -20,11 +19,6 @@ Labels = pd.Series
 Distances = npt.NDArray[np.float_]
 
 NON_ROBUST_LABEL = "0_0_0_0_0"
-
-
-def rowise_cosine_similarity(X0: npt.ArrayLike, X1: npt.ArrayLike):
-    """Computes the cosine similary per row of two equally shaped 2D matrices."""
-    return np.sum(X0 * X1, axis=1) / (nplg.norm(X0, axis=1) * nplg.norm(X1, axis=1))
 
 
 def robust_labels(
@@ -79,7 +73,7 @@ class PairwiseComponent(traitlets.HasTraits):
     def color_by_distances(self):
         self._by = DISTANCE_COLUMN
         cmap = "viridis_r" if self.inverted else "viridis"
-        self.scatter.color(by=DISTANCE_COLUMN, map=cmap)
+        self.scatter.color(by=DISTANCE_COLUMN, map=cmap, norm=[0, 1])
         self.scatter.legend(True)
 
     @traitlets.observe("inverted")
@@ -184,37 +178,57 @@ def compare(a: Embedding, b: Embedding, row_height: int = 600):
         return distances, distances
 
     def counts():
+        alabels = pd.Series(left.logo.labels, dtype="category", name="label")
         acounts = metrics.count_neighbor_labels(
             left.embedding.knn_indices,
-            left.labels,
+            alabels,
         )
+        blabels = pd.Series(right.logo.labels, dtype="category", name="label")
         bcounts = metrics.count_neighbor_labels(
             right.embedding.knn_indices,
-            right.labels,
+            blabels,
         )
-        return acounts, bcounts
+        return (
+            pd.DataFrame(acounts, index=alabels),
+            pd.DataFrame(bcounts, index=blabels),
+        )
 
     def point_label():
         acounts, bcounts = counts()
-        distances = rowise_cosine_similarity(acounts, bcounts)
+        distances = metrics.rowise_cosine_similarity(acounts.values, bcounts.values)
         return distances, distances
 
-    def label_label():
+    def label_counts():
         acounts, bcounts = counts()
+        a = acounts.groupby("label").sum()
+        a.columns = a.index
+        b = bcounts.groupby("label").sum()
+        b.columns = b.index
+        return (a, acounts.index), (b, bcounts.index)
 
-        aindex = pd.Series(left.labels, dtype="category", name="label")
-        a = pd.DataFrame(acounts, index=aindex).groupby("label").sum()
+    def label_label():
+        a, b = label_counts()
 
-        bindex = pd.Series(right.labels, dtype="category", name="label")
-        b = pd.DataFrame(bcounts, index=bindex).groupby("label").sum()
+        # np.fill_diagonal(a.values, 0)
+        # np.fill_diagonal(b.values, 0)
 
-        overlap = a.index.intersection(b.index)
+        # np.fill_diagonal(a.values, a.values.max(axis=0))
+        # np.fill_diagonal(b.values, b.values.max(axis=0))
 
-        grp_distances = rowise_cosine_similarity(a.loc[overlap], b.loc[overlap])
+        # subset labels only by those represented in both sets
+        overlap = a[0].index.intersection(b[0].index)
+        asubset = a[0].loc[overlap, overlap]
+        bsubset = b[0].loc[overlap, overlap]
+
+        # dict of { <label>: <similarity> }
+        grp_distances = pd.Series(
+            metrics.rowise_cosine_similarity(asubset.values, bsubset.values),
+            index=overlap,
+        )
 
         return (
-            left.labels.map(grp_distances).astype(float),
-            right.labels.map(grp_distances).astype(float),
+            a[1].map(grp_distances).astype(float),
+            b[1].map(grp_distances).astype(float),
         )
 
     # METRIC START
@@ -420,5 +434,11 @@ def compare(a: Embedding, b: Embedding, row_height: int = 600):
     # initialize
     label_slider.value = 0
     left.distances, right.distances = metric.value()
-    return ipywidgets.VBox([header, main]), left, right
 
+    widget = ipywidgets.VBox([header, main])
+    widget.left = left
+    widget.right = right
+    widget.label_counts = label_counts
+    widget.label_label = label_label
+
+    return widget
