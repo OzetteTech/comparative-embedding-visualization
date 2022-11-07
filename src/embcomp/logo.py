@@ -179,6 +179,7 @@ class ConsensusLogo(HTMLWidget):
                 .style("display", "flex")
                 .style("flex-wrap", "wrap")
                 .style("gap", `${spacing}px`)
+                .style("font-size", "var(--jp-widgets-font-size, 11px)");
 
             let spans = pre
                 .selectAll("span")
