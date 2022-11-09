@@ -67,7 +67,7 @@ def consensus_from_counts(counts: list[dict]):
         data.append(vec)
 
     if markers is None:
-        return { "total": 0, "counts": [] }
+        return {"total": 0, "counts": []}
 
     consensus_counts = np.stack(data).sum(axis=0)
     names = map(lambda m: m.name, markers)

@@ -60,10 +60,22 @@ class PairwiseComponent(traitlets.HasTraits):
         )
         self._by = LABEL_COLUMN
         self.labels = self.embedding.labels
+        # TODO: fix me. hack to initialize the colormap
+        self._colormap, _ = create_shared_colormaps(self, self)
         self.color_by_labels()
 
     def show(self):
         return ipywidgets.VBox([self.scatter.show(), self.logo])
+
+    @property
+    def colormap(self):
+        return self._colormap
+
+    @colormap.setter
+    def colormap(self, cmap):
+        self._colormap = cmap
+        if self._by == LABEL_COLUMN:
+            self.color_by_labels()
 
     def color_by_labels(self):
         self._by = LABEL_COLUMN
@@ -103,18 +115,30 @@ class PairwiseComponent(traitlets.HasTraits):
     @labels.setter
     def labels(self, labels: npt.ArrayLike):
         self.logo.labels = labels
-        rlabels = robust_labels(labels, self.embedding.robust)
-        self._colormap = dict(
-            zip(
-                rlabels.cat.categories,
-                itertools.cycle(jscatter.glasbey_dark),
-            )
-        )
-        if self.embedding.robust is not None:
-            self._colormap.update({NON_ROBUST_LABEL: "#333333"})
-        self._data[LABEL_COLUMN] = rlabels
+        self._data[LABEL_COLUMN] = robust_labels(labels, self.embedding.robust)
         if self._by == LABEL_COLUMN:
-            self.color_by_labels()
+            # self.color_by_labels()
+            ...
+
+
+def create_shared_colormaps(
+    a: PairwiseComponent, b: PairwiseComponent
+) -> tuple[dict, dict]:
+    # create unified colormap
+    lookup = dict(
+        zip(
+            set(a.labels.cat.categories).union(b.labels.cat.categories),
+            itertools.cycle(jscatter.glasbey_dark),
+        )
+    )
+
+    # force non-robust to be grey
+    lookup[NON_ROBUST_LABEL] = "#333333"
+
+    # create separate colormaps for each component
+    return tuple(
+        {label: lookup[label] for label in cmp.labels.cat.categories} for cmp in (a, b)
+    )
 
 
 def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
@@ -132,7 +156,7 @@ def compare(a: Embedding, b: Embedding, row_height: int = 600):
     pointwise_correspondence = has_pointwise_correspondence(a, b)
 
     # representative label
-    max_label_level = len(parse_label(a.labels[0])) - 1
+    max_label_level = len(parse_label(a.labels.values[0])) - 1
 
     label_slider = ipywidgets.IntSlider(
         description="label level:",
@@ -404,6 +428,7 @@ def compare(a: Embedding, b: Embedding, row_height: int = 600):
         right_new = trim_label_series(b.labels, max_label_level - change.new)
         left.labels = left_new
         right.labels = right_new
+        left.colormap, right.colormap = create_shared_colormaps(left, right)
         left.distances, right.distances = metric.value()
         active_labels.value = "markers: " + " ".join(
             l.name for l in parse_label(left_new[0])
