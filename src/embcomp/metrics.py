@@ -1,5 +1,6 @@
 import numba as nb
 import numpy as np
+import numpy.linalg as nplg
 import numpy.typing as npt
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
@@ -75,3 +76,8 @@ def count_neighbor_labels(
 
 def label_label_sets(knn_indices: npt.NDArray[np.int_], labels: npt.NDArray):
     return {label: knn_indices[labels == label].unique() for label in np.unique(labels)}
+
+
+def rowise_cosine_similarity(X0: npt.ArrayLike, X1: npt.ArrayLike):
+    """Computes the cosine similary per row of two equally shaped 2D matrices."""
+    return np.sum(X0 * X1, axis=1) / (nplg.norm(X0, axis=1) * nplg.norm(X1, axis=1))

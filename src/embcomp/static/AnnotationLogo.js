@@ -27,7 +27,8 @@ export function AnnotationLogo(
 		width = 640, // the outer width of the chart, in pixels
 		height = 500, // the outer height of the chart, in pixels
 		xPadding = 0.1, // amount of x-range to reserve to separate bars
-		color = "currentColor", // bar fill color
+		// color = "currentColor", // bar fill color
+		color = "#cbd5e1",
 		range = d3.schemeRdBu[3],
 	} = {},
 ) {
@@ -96,7 +97,7 @@ export function AnnotationLogo(
 	let svg = d3.create("svg")
 		.attr("width", width)
 		.attr("height", height)
-		.attr("viewBox", [0, 0, width, height]);
+		.attr("viewBox", [0, 0, width, height])
 		// .attr("style", "max-width: 100%; height: auto; height: intrinsic;");
 
 	svg
