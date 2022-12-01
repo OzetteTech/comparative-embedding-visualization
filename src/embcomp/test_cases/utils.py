@@ -39,21 +39,27 @@ def plot(
     b: Union[None, pd.DataFrame] = None,
     ax: Union[None, plt.Axes] = None,  # type: ignore
 ):
-    ax: plt.Axes = ax or plt.gca()
+    root: plt.Axes = ax or plt.gca()
 
-    def _plot(data):
+    categories = set(a.label.cat.categories)
+    if b is not None:
+        categories.union(b.label.cat.categories)
+    colors = dict(zip(categories, jscatter.glasbey_dark))
+
+    def _plot(data: pd.DataFrame, ax: plt.Axes):
         ax.set_aspect("equal")
         ax.tick_params(
             left=False, right=False, labelleft=False, labelbottom=False, bottom=False
         )
-        for (_, grp), color in zip(data.groupby("label"), jscatter.glasbey_dark):
-            ax.scatter(grp.x, grp.y, color=color, s=1)
+        for label, grp in data.groupby("label"):
+            color = colors[label]  # type: ignore
+            ax.scatter(grp.x, grp.y, color=color, label=label, s=1)
 
-    _plot(a)
-    if b is None:
-        return
-
-    ax = make_axes_locatable(ax).append_axes(
-        "right", size="100%", pad=0.1, sharex=ax, sharey=ax
-    )
-    _plot(b)
+    _plot(data=a, ax=root)
+    if b is not None:
+        _plot(
+            data=b,
+            ax=make_axes_locatable(root).append_axes(
+                "right", size="100%", pad=0.1, sharex=root, sharey=root
+            ),
+        )

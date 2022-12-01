@@ -41,32 +41,6 @@ def generate_data(
     )
 
 
-def translate(data, labels: list[str], offset: tuple[float, float] = (13, 0)):
-    copy = data.copy()
-    copy.loc[copy["label"].isin(labels), ["x", "y"]] += offset
-    return copy
-
-
-def rotate(data, labels: list[str], theta: float = np.radians(-45)):
-    copy = data.copy()
-    c, s = np.cos(theta), np.sin(theta)
-    R = np.array(((c, -s), (s, c)))
-
-    mask = copy["label"].isin(labels)
-    copy.loc[mask, ["x", "y"]] = copy.loc[mask, ["x", "y"]].values @ R.T
-
-    return copy
-
-
-def downsample(data: pd.DataFrame, labels: list[str], frac: float = 0.5):
-    dfs = []
-    for label, df in data.groupby("label"):
-        if label in labels:
-            df = df.sample(frac=frac)
-        dfs.append(df)
-    return pd.concat(dfs).reset_index()
-
-
 @dataframe
 def case1(x: float = 2.5, cov: Covariance2D = ((0.2, 0), (0, 0.2)), size: int = 300):
     """
