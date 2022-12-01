@@ -1,0 +1,201 @@
+import functools
+from typing import Union
+
+import jscatter
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from matplotlib.colors import Normalize
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+from embcomp.test_cases.utils import Covariance2D, dataframe
+from embcomp.metrics import rowise_cosine_similarity
+
+
+@dataframe
+def generate_data(
+    neighborhood_offset: Union[float, None] = 13,
+    x: float = 2.5,
+    cov: Covariance2D = ((0.2, 0), (0, 0.2)),
+    size: int = 500,
+):
+    means = [
+        (0, 0),
+        (-x, -x),
+        (-x, x),
+        (x, x),
+        (x, -x),
+    ]
+    if neighborhood_offset is not None:
+        means.extend(
+            [
+                (neighborhood_offset - x, -x),
+                (neighborhood_offset - x, x),
+                (neighborhood_offset + x, x),
+                (neighborhood_offset + x, -x),
+            ]
+        )
+    yield from map(
+        functools.partial(np.random.multivariate_normal, cov=cov, size=size), means
+    )
+
+
+def translate(data, labels: list[str], offset: tuple[float, float] = (13, 0)):
+    copy = data.copy()
+    copy.loc[copy["label"].isin(labels), ["x", "y"]] += offset
+    return copy
+
+
+def rotate(data, labels: list[str], theta: float = np.radians(-45)):
+    copy = data.copy()
+    c, s = np.cos(theta), np.sin(theta)
+    R = np.array(((c, -s), (s, c)))
+
+    mask = copy["label"].isin(labels)
+    copy.loc[mask, ["x", "y"]] = copy.loc[mask, ["x", "y"]].values @ R.T
+
+    return copy
+
+
+def downsample(data: pd.DataFrame, labels: list[str], frac: float = 0.5):
+    dfs = []
+    for label, df in data.groupby("label"):
+        if label in labels:
+            df = df.sample(frac=frac)
+        dfs.append(df)
+    return pd.concat(dfs).reset_index()
+
+
+@dataframe
+def case1(x: float = 2.5, cov: Covariance2D = ((0.2, 0), (0, 0.2)), size: int = 300):
+    """
+    - Case: 5 equal sized groups, well separated
+    - Expected: no confusion
+    """
+    yield np.random.multivariate_normal((-x, -x), cov, size)
+    yield np.random.multivariate_normal((-x, x), cov, size)
+    yield np.random.multivariate_normal((x, -x), cov, size)
+    yield np.random.multivariate_normal((x, x), cov, size)
+    yield np.random.multivariate_normal((0, 0), cov, size)
+
+
+@dataframe
+def case2(x: float = 2.5, cov: Covariance2D = ((0.2, 0), (0, 0.2)), size: int = 300):
+    """
+    - Case: 5 equal sized groups, 2 mixed
+    - Expected: confusion with last two groups
+    """
+    yield np.random.multivariate_normal((-x, -x), cov, size)
+    yield np.random.multivariate_normal((-x, x), cov, size)
+    yield np.random.multivariate_normal((x, -x), cov, size)
+    yield np.random.multivariate_normal((0, 0), cov, size)
+    yield np.random.multivariate_normal((0, 0), cov, size)
+
+
+@dataframe
+def case3(x: float = 4.5, cov: Covariance2D = ((0.2, 0), (0, 0.2)), size: int = 300):
+    """
+    - Case: 5 groups of various sizes, small group intermixed with larger
+    - Expected: smaller group should be confused with larger mixed group
+    """
+    cov_factor = 6
+    cov_arr = np.array(cov)
+
+    yield np.random.multivariate_normal((-x, -x), cov_arr, size)
+    yield np.random.multivariate_normal((-x, x), cov_arr, size)
+    yield np.random.multivariate_normal((x, -x), cov_arr, size)
+    yield np.random.multivariate_normal((0, 0), cov_arr * cov_factor, size)
+    yield np.random.multivariate_normal((0, 0), cov_arr, size)
+
+
+@dataframe
+def case4(x: float = 4.5, cov: Covariance2D = ((0.2, 0), (0, 0.2)), size: int = 300):
+    """
+    - Case: 5 groups of various sizes, small group intermixed with larger
+    - Expected: smaller group should be confused with larger mixed group
+    """
+    size_factor = 2
+    cov_factor = 6
+    cov_arr = np.array(cov)
+
+    yield np.random.multivariate_normal((-x, -x), cov_arr, size)
+    yield np.random.multivariate_normal((-x, x), cov_arr, size)
+    yield np.random.multivariate_normal((x, -x), cov_arr, size)
+    yield np.random.multivariate_normal(
+        (0, 0), cov_arr * cov_factor, size * size_factor
+    )
+    yield np.random.multivariate_normal((0, 0), cov_arr * cov_factor, size)
+
+
+@dataframe
+def case5(x: float = 3, cov: Covariance2D = ((0.5, 0), (0, 0.5))):
+    """
+    - Case: 4 groups of various sizes
+    """
+    yield np.random.multivariate_normal((-x, -x), cov, 10)
+    yield np.random.multivariate_normal((-x, x), cov, 50)
+    yield np.random.multivariate_normal((x, -x), cov, 100)
+    yield np.random.multivariate_normal((x, x), cov, 1000)
+
+
+def plot_confusion(df: pd.DataFrame, metrics):
+    fig, (ax0, *axs) = plt.subplots(nrows=1, ncols=len(metrics) + 1, figsize=(12, 2))
+
+    ax0.set_facecolor("black")
+    ax0.tick_params(
+        left=False, right=False, labelleft=False, labelbottom=False, bottom=False
+    )
+
+    for (_, data), color in zip(df.groupby("label"), jscatter.glasbey_dark):
+        ax0.scatter("x", "y", data=data, color=color, s=1, alpha=0.5)
+
+    sideax = make_axes_locatable(ax0).append_axes("left", size="20%", pad=0.1)
+    sideax.set_xlabel("size")
+    sideax.barh(
+        df.label.cat.categories.values,
+        df.label.value_counts(sort=False),
+        color=jscatter.glasbey_dark[: len(df.label.cat.categories)],
+        alpha=0.5,
+    )
+
+    for ax, maybe_func in zip(axs, metrics):
+        if callable(maybe_func):
+            func = maybe_func
+        else:
+            title, func = maybe_func
+            ax.set_title(title)
+        ax.set_facecolor("black")
+        ax.tick_params(
+            left=False, right=False, labelleft=False, labelbottom=False, bottom=False
+        )
+        confusion = 1 - rowise_cosine_similarity(
+            func(df), np.eye(len(df.label.cat.categories))
+        )
+
+        sideax = make_axes_locatable(ax).append_axes("left", size="20%", pad=0.1)
+        sideax.set_xlim([0, 1])
+        sideax.set_xlabel("conf.")
+        sideax.barh(
+            confusion.index,
+            confusion.values,
+            color=jscatter.glasbey_dark[: len(confusion)],
+            alpha=0.5,
+        )
+
+        norm, cmap = Normalize(0, 1), "viridis"
+        fig.colorbar(
+            mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+            ax=ax,
+            shrink=0.3,
+            anchor=(0, 1),
+        )
+        ax.scatter(
+            df["x"],
+            df["y"],
+            c=df["label"].map(confusion),
+            s=1,
+            cmap=cmap,
+            alpha=0.5,
+            norm=norm,
+        )
