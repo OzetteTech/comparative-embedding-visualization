@@ -2,7 +2,6 @@ import functools
 from typing import Union
 
 import jscatter
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -116,7 +115,6 @@ def case5(x: float = 3, cov: Covariance2D = ((0.5, 0), (0, 0.5))):
 def plot_confusion(df: pd.DataFrame, metrics):
     fig, (ax0, *axs) = plt.subplots(nrows=1, ncols=len(metrics) + 1, figsize=(12, 2))
 
-    ax0.set_facecolor("black")
     ax0.tick_params(
         left=False, right=False, labelleft=False, labelbottom=False, bottom=False
     )
@@ -130,7 +128,6 @@ def plot_confusion(df: pd.DataFrame, metrics):
         df.label.cat.categories.values,
         df.label.value_counts(sort=False),
         color=jscatter.glasbey_dark[: len(df.label.cat.categories)],
-        alpha=0.5,
     )
 
     for ax, maybe_func in zip(axs, metrics):
@@ -139,7 +136,6 @@ def plot_confusion(df: pd.DataFrame, metrics):
         else:
             title, func = maybe_func
             ax.set_title(title)
-        ax.set_facecolor("black")
         ax.tick_params(
             left=False, right=False, labelleft=False, labelbottom=False, bottom=False
         )
@@ -154,12 +150,12 @@ def plot_confusion(df: pd.DataFrame, metrics):
             confusion.index,
             confusion.values,
             color=jscatter.glasbey_dark[: len(confusion)],
-            alpha=0.5,
         )
+        plt.cm
 
         norm, cmap = Normalize(0, 1), "viridis"
         fig.colorbar(
-            mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+            plt.cm.ScalarMappable(norm=norm, cmap=cmap),
             ax=ax,
             shrink=0.3,
             anchor=(0, 1),

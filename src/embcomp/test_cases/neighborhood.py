@@ -2,7 +2,6 @@ import functools
 from typing import Callable, Union
 
 import jscatter
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -207,18 +206,19 @@ def case6d():
 
 MetricFn = Callable[[pd.DataFrame], pd.DataFrame]
 
-
 def plot_neighborhood(
     a: pd.DataFrame,
     b: pd.DataFrame,
-    metrics: list[MetricFn],
+    metrics: list[Union[MetricFn, tuple[str, MetricFn]]],
+    name: Union[str, None] = None,
 ):
 
     fig, axs = plt.subplots(
         nrows=2, ncols=len(metrics) + 1, figsize=(12, 3), sharex=True, sharey=True
     )
+    if name:
+        axs[0, 0].set_title(name, fontsize="medium", loc="left")
     for ax, df in zip((axs[0, 0], axs[1, 0]), (a, b)):
-        ax.set_facecolor("black")
         ax.tick_params(
             left=False, right=False, labelleft=False, labelbottom=False, bottom=False
         )
@@ -235,13 +235,16 @@ def plot_neighborhood(
 
         overlap = ma.index.intersection(mb.index)
 
+        dist = { label: 0 for label in ma.index.union(mb.index) }
+
         sim = rowise_cosine_similarity(
             ma.loc[overlap, overlap], mb.loc[overlap, overlap]
         )
 
+        dist.update(sim)
+
         for i, df in enumerate((a, b)):
             ax = axs[i, j]
-            ax.set_facecolor("black")
             ax.tick_params(
                 left=False,
                 right=False,
@@ -251,7 +254,7 @@ def plot_neighborhood(
             )
             norm, cmap = Normalize(0, 1), "viridis_r"
             fig.colorbar(
-                mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+                plt.cm.ScalarMappable(norm=norm, cmap=cmap),
                 ax=ax,
                 shrink=0.5,
                 anchor=(0, 1),
@@ -265,9 +268,3 @@ def plot_neighborhood(
                 alpha=0.5,
                 norm=norm,
             )
-
-    # divider = make_axes_locatable(ax)
-    # for metric in metrics:
-    # inner = divider.append_axes("bottom", size="100%", pad=0.1)
-    # plot(a, b, ax=inner)
-    # ...

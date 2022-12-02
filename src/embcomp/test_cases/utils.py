@@ -29,7 +29,7 @@ def dataframe(
 
         df = pd.concat(dfs)
         df.label = df.label.astype("category")
-        return df
+        return df.reset_index(drop=True)
 
     return wrapper
 
