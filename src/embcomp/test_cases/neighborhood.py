@@ -1,6 +1,8 @@
 import functools
-from typing import Union, Callable
+from typing import Callable, Union
 
+import jscatter
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -8,6 +10,7 @@ from matplotlib.colors import Normalize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import embcomp.test_cases.confusion as confusion
+from embcomp.metrics import rowise_cosine_similarity
 from embcomp.test_cases.utils import Covariance2D, dataframe, plot
 
 
@@ -209,12 +212,62 @@ def plot_neighborhood(
     a: pd.DataFrame,
     b: pd.DataFrame,
     metrics: list[MetricFn],
-    **kwargs
 ):
-    ax = kwargs.get("ax", plt.gca())
-    plot(a, b, ax=ax)
 
-    for metric in metrics:
-        inner = make_axes_locatable(ax).append_axes("left", size="50%", pad=0.1)
-        print(inner)
-        plot(a, b, ax=inner)
+    fig, axs = plt.subplots(
+        nrows=2, ncols=len(metrics) + 1, figsize=(12, 3), sharex=True, sharey=True
+    )
+    for ax, df in zip((axs[0, 0], axs[1, 0]), (a, b)):
+        ax.set_facecolor("black")
+        ax.tick_params(
+            left=False, right=False, labelleft=False, labelbottom=False, bottom=False
+        )
+        for (_, data), color in zip(df.groupby("label"), jscatter.glasbey_dark):
+            ax.scatter("x", "y", data=data, color=color, s=1, alpha=0.5)
+
+    for j, metric in enumerate(metrics, start=1):
+        if isinstance(metric, tuple):
+            title, metric = metric
+            axs[0, j].set_title(title)
+
+        ma = metric(a)
+        mb = metric(b)
+
+        overlap = ma.index.intersection(mb.index)
+
+        sim = rowise_cosine_similarity(
+            ma.loc[overlap, overlap], mb.loc[overlap, overlap]
+        )
+
+        for i, df in enumerate((a, b)):
+            ax = axs[i, j]
+            ax.set_facecolor("black")
+            ax.tick_params(
+                left=False,
+                right=False,
+                labelleft=False,
+                labelbottom=False,
+                bottom=False,
+            )
+            norm, cmap = Normalize(0, 1), "viridis_r"
+            fig.colorbar(
+                mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+                ax=ax,
+                shrink=0.5,
+                anchor=(0, 1),
+            )
+            ax.scatter(
+                df.x,
+                df.y,
+                c=df.label.map(sim),
+                cmap=cmap,
+                s=1,
+                alpha=0.5,
+                norm=norm,
+            )
+
+    # divider = make_axes_locatable(ax)
+    # for metric in metrics:
+    # inner = divider.append_axes("bottom", size="100%", pad=0.1)
+    # plot(a, b, ax=inner)
+    # ...
