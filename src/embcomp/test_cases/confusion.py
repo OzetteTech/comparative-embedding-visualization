@@ -151,14 +151,11 @@ def plot_confusion(df: pd.DataFrame, metrics):
             confusion.values,
             color=jscatter.glasbey_dark[: len(confusion)],
         )
-        plt.cm
 
         norm, cmap = Normalize(0, 1), "viridis"
         fig.colorbar(
             plt.cm.ScalarMappable(norm=norm, cmap=cmap),
             ax=ax,
-            shrink=0.3,
-            anchor=(0, 1),
         )
         ax.scatter(
             df["x"],

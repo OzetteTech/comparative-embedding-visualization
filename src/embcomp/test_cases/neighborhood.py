@@ -106,7 +106,7 @@ def downsample(data: pd.DataFrame, labels: list[str], frac: float = 0.5):
 def case1():
     """Displacement"""
     data = generate_data()
-    return data, translate(data, labels=["A"])
+    return data, translate(data, labels=["A"], offset = (6.5, 0))
 
 
 def case2():
@@ -256,8 +256,6 @@ def plot_neighborhood(
             fig.colorbar(
                 plt.cm.ScalarMappable(norm=norm, cmap=cmap),
                 ax=ax,
-                shrink=0.5,
-                anchor=(0, 1),
             )
             ax.scatter(
                 df.x,
