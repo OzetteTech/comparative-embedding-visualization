@@ -86,16 +86,15 @@ class HTMLWidget(ipywidgets.Output):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.observe(lambda _: self._render(), names=self.class_own_traits().keys())
+        self._render()
 
-        def render(_change):
-            self.clear_output()
-            state = {name: getattr(self, name) for name in self.class_own_traits()}
-            html = self._template.render(id=uuid.uuid4().hex, **state)
-            with self:
-                IPython.display.display(IPython.display.HTML(html))
-
-        render(None)
-        self.observe(render, names=list(self.class_own_traits().keys()))
+    def _render(self):
+        self.clear_output()
+        state = {name: getattr(self, name) for name in self.class_own_traits()}
+        html = self._template.render(id=uuid.uuid4().hex, **state)
+        with self:
+            IPython.display.display(IPython.display.HTML(html))
 
 
 class LogoHTML(HTMLWidget):

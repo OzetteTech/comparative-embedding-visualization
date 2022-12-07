@@ -33,12 +33,42 @@ def robust_labels(
     return pd.Series(labels, dtype="category")
 
 
+def create_shared_colormaps(
+    a: "PairwiseComponent", b: "PairwiseComponent"
+) -> tuple[dict, dict]:
+
+    # create unified colormap
+    lookup = dict(
+        zip(
+            set(a.labels.cat.categories).union(b.labels.cat.categories),
+            itertools.cycle(jscatter.glasbey_dark),
+        )
+    )
+
+    # force non-robust to be grey
+    lookup[NON_ROBUST_LABEL] = "#333333"
+
+    # create separate colormaps for each component
+    return tuple(
+        {label: lookup[label] for label in cmp.labels.cat.categories} for cmp in (a, b)
+    )
+
+
 @dataclasses.dataclass
 class Embedding:
     coords: Coordinates
     knn_indices: KnnIndices
     labels: Labels
     robust: Union[npt.NDArray[np.bool_], None] = None
+
+    @classmethod
+    def from_df(cls, df: pd.DataFrame, knn_indices: KnnIndices):
+        return cls(
+            coords=df[["x", "y"]].values,
+            knn_indices=knn_indices,
+            labels=df["label"],
+            robust=df["robust"] if "robust" in df else None,
+        )
 
 
 LABEL_COLUMN = "_label"
@@ -121,26 +151,6 @@ class PairwiseComponent(traitlets.HasTraits):
             ...
 
 
-def create_shared_colormaps(
-    a: PairwiseComponent, b: PairwiseComponent
-) -> tuple[dict, dict]:
-    # create unified colormap
-    lookup = dict(
-        zip(
-            set(a.labels.cat.categories).union(b.labels.cat.categories),
-            itertools.cycle(jscatter.glasbey_dark),
-        )
-    )
-
-    # force non-robust to be grey
-    lookup[NON_ROBUST_LABEL] = "#333333"
-
-    # create separate colormaps for each component
-    return tuple(
-        {label: lookup[label] for label in cmp.labels.cat.categories} for cmp in (a, b)
-    )
-
-
 def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
     return np.array_equal(a.labels, b.labels) and (
         (a.robust is None and b.robust is None)
@@ -152,7 +162,14 @@ def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
     )
 
 
-def compare(a: Embedding, b: Embedding, row_height: int = 600):
+def compare(
+    a: Union[tuple[pd.DataFrame, KnnIndices], Embedding],
+    b: Union[tuple[pd.DataFrame, KnnIndices], Embedding],
+    row_height: int = 600,
+):
+    a = Embedding.from_df(a[0], a[1]) if isinstance(a, tuple) else a
+    b = Embedding.from_df(b[0], b[1]) if isinstance(b, tuple) else b
+
     pointwise_correspondence = has_pointwise_correspondence(a, b)
 
     # representative label
