@@ -180,6 +180,7 @@ def compare(
         value=max_label_level,
         min=0,
         max=max_label_level,
+        continuous_update=False,
     )
 
     left, right = (
