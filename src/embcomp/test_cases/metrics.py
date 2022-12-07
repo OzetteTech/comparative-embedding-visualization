@@ -17,30 +17,43 @@ def _validate_df(df: pd.DataFrame):
 def process_bags(
     labels: pd.Series,
     indices_bags: dict[str, np.ndarray],
-    kind: Literal["set", "sum"]
+    type: Literal["incoming", "outgoing", "both"],
+    agg: Literal["set", "sum"],
 ):
-    if kind == "set":
-        indices_bags = {k: np.unique(v) for k, v in indices_bags.items()}
 
-    index = pd.Series(indices_bags.keys(), name="label", dtype="category")
+    # flatten
+    outgoing = {k: v.ravel() for k, v in indices_bags.items()}
+
+    if type == "outgoing":
+        bags = outgoing
+    else:
+        # incoming or both
+        incoming = {}
+        for label in indices_bags:
+            bag = []
+            for other, out_inds in indices_bags.items():
+                in_inds = np.where(labels == other)[0]
+
+                if label == other:
+                    continue
+
+                mask = np.any(labels.values[out_inds] == label, axis=1)
+                bag.append(in_inds[mask])
+            incoming[label] = np.concatenate(bag)
+
+        if type == "incoming":
+            bags = incoming
+        else:
+            bags = {}
+            for k in outgoing:
+                bags[k] = np.concatenate((outgoing[k], incoming[k]))
+
+    if agg == "set":
+        bags = {k: np.unique(v) for k, v in bags.items()}
+
+    index = pd.Series(bags.keys(), name="label", dtype="category")
     df = pd.DataFrame(
-        np.stack([labels.values[v].value_counts() for v in indices_bags.values()]),
-        index=index,
-    )
-    df.columns = index.values
-    return df
-
-def process_bags(
-    labels: pd.Series,
-    indices_bags: dict[str, np.ndarray],
-    kind: Literal["set", "sum"]
-):
-    if kind == "set":
-        indices_bags = {k: np.unique(v) for k, v in indices_bags.items()}
-
-    index = pd.Series(indices_bags.keys(), name="label", dtype="category")
-    df = pd.DataFrame(
-        np.stack([labels.values[v].value_counts() for v in indices_bags.values()]),
+        np.stack([labels.values[v].value_counts() for v in bags.values()]),
         index=index,
     )
     df.columns = index.values
@@ -66,7 +79,7 @@ def fixed_k(df: pd.DataFrame, k: int):
 
 def dynamic_k(
     df: pd.DataFrame,
-    compute_k: Callable[[int], int] = lambda size: int(np.ceil(np.log10(size))),
+    compute_k: Callable[[int], int] = lambda size: int(np.ceil(np.log2(size))),
     kind: Literal["set", "sum"] = "set",
     knn_indices: Union[np.ndarray, None] = None,
 ):
@@ -86,18 +99,19 @@ def dynamic_k(
         label_knn_indices = knn_indices[df.label.values == label, 0:k]
         indices_bags[label] = label_knn_indices.ravel()
 
-    return process_bags(labels=df.label, indices_bags=indices_bags, kind=kind)
+    return process_bags(
+        labels=df.label, indices_bags=indices_bags, type="outgoing", agg=kind
+    )
 
 
 def count_first(
     df: pd.DataFrame,
     n: int = 0,
-    type: Literal["incoming", "outgoing", "both"],
     agg: Literal["set", "sum"] = "set",
+    type: Literal["incoming", "outgoing", "both"] = "incoming",
 ):
     _validate_df(df)
 
-    # clamp computing the neighborhood graph up to some point
     largest_category_size = min(
         500,
         df.label.value_counts(sort=True)[0],
@@ -119,12 +133,12 @@ def count_first(
             knn_identities[label_mask, confusion_k_start:] != label,
             axis=1,
         )
-        bag = []
-        for _ in range(n + 1):
-            bag.append(
-                knn_indices[label_mask, first_non_self_indices + confusion_k_start]
-            )
+        bag = np.zeros((len(first_non_self_indices), n + 1), dtype="int64")
+        for i in range(n + 1):
+            bag[:, i] = knn_indices[
+                label_mask, first_non_self_indices + confusion_k_start
+            ]
             first_non_self_indices += 1
-        indices_bags[label] = np.concatenate(bag)
+        indices_bags[label] = bag
 
-    return process_bags(labels=df.label, indices_bags=indices_bags, kind=agg)
+    return process_bags(labels=df.label, indices_bags=indices_bags, agg=agg, type=type)

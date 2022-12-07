@@ -260,7 +260,7 @@ def plot_neighborhood(
             ax.scatter(
                 df.x,
                 df.y,
-                c=df.label.map(sim),
+                c=np.nan_to_num(df.label.map(sim)),
                 cmap=cmap,
                 s=1,
                 alpha=0.5,
