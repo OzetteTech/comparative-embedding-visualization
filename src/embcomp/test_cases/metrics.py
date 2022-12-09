@@ -37,7 +37,7 @@ def process_bags(
                 if label == other:
                     continue
 
-                mask = np.any(labels.values[out_inds] == label, axis=1)
+                mask = np.any(labels.to_numpy()[out_inds] == label, axis=1)
                 bag.append(in_inds[mask])
             incoming[label] = np.concatenate(bag)
 
@@ -146,3 +146,37 @@ def count_first(
         indices_bags[label] = bag
 
     return process_bags(labels=df.label, indices_bags=indices_bags, agg=agg, type=type)
+
+
+def transform_abundance(
+    label_representation: pd.DataFrame,
+    abundances: dict[str, int],
+    force_include_self: bool = False,
+):
+    """
+    Creates an abundance-based representation.
+
+    This function transforms a label-level neighborhood representation
+    into an abundance-based representation by replacing the non-zero
+    elements with the abundances.
+
+    Parameters
+    ----------
+    label_representation : label-level neighborhood representation (e.g., result of `count_first`)
+    abundances : label abundances
+    force_include_self: force include self abundance even if missing from lable-level representaion.
+    """
+
+    mask = label_representation.to_numpy() > 0
+    if force_include_self:
+        np.fill_diagonal(mask, True)
+    return pd.DataFrame(
+        mask * np.array([abundances[col] for col in label_representation.columns]),
+        columns=label_representation.columns,
+        index=label_representation.index,
+    )
+
+
+def relative_abundance(abundance_representation: pd.DataFrame):
+
+    return np.diagonal(abundance_representation) / abundance_representation.sum(axis=1)
