@@ -12,6 +12,8 @@ import pandas as pd
 import traitlets
 import traittypes
 
+from embcomp._widget_utils import link_widgets
+
 here = pathlib.Path(__file__).parent
 
 
@@ -231,7 +233,7 @@ class AnnotationLogo(ipywidgets.VBox):
             max=1000,
         )
         self.labels = labels
-        ipywidgets.link((self._logo, "threshold"), (self._threshold, "value"))
+        link_widgets((self._logo, "threshold"), (self._threshold, "value"))
         ipywidgets.dlink(
             (self._logo, "counts"),
             (consensus_logo, "data"),

@@ -8,9 +8,11 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import traitlets
+import traittypes
 
 import embcomp.metrics as metrics
-from embcomp.logo import AnnotationLogo, parse_label, trim_label_series, marker_slider
+from embcomp._widget_utils import link_widgets
+from embcomp.logo import AnnotationLogo, marker_slider, parse_label, trim_label_series
 
 Coordinates = npt.ArrayLike
 KnnIndices = npt.NDArray[np.int_]
@@ -94,7 +96,7 @@ DISTANCE_COLUMN = "_distance"
 
 class EmbeddingWidgetCollection(traitlets.HasTraits):
     inverted = traitlets.Bool(False)
-    ilocs = traitlets.Any()
+    ilocs = traittypes.Array([])
 
     def __init__(
         self,
@@ -120,18 +122,19 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             for _ in range(2)
         )
         # link the plots together with js
-        ipywidgets.jslink(
+        link_widgets(
             (categorial_scatter.widget, "selection"),
             (metric_scatter.widget, "selection"),
         )
         # expose a _single_ selection to others
-        ipywidgets.link(
+        link_widgets(
             (categorial_scatter.widget, "selection"),
             (self, "ilocs"),
         )
 
         self.categorial_scatter = categorial_scatter
         self.metric_scatter = metric_scatter
+        # TODO: show?
         self.logo = AnnotationLogo(embedding.labels)
 
         self._labeler = lambda labels: robust_labels(labels, embedding.robust)
@@ -285,8 +288,8 @@ def compare(
 
     # COLOR START
     inverted = ipywidgets.Checkbox(False, description="invert colormap")
-    ipywidgets.link((left, "inverted"), (inverted, "value"))
-    ipywidgets.link((right, "inverted"), (inverted, "value"))
+    link_widgets((left, "inverted"), (inverted, "value"))
+    link_widgets((right, "inverted"), (inverted, "value"))
     # COLOR END
 
     # SELECTION START
@@ -300,33 +303,11 @@ def compare(
     def sync():
         nonlocal unlink
         unlink()
-        selection_link = ipywidgets.link(
-            source=(left, "ilocs"), target=(right, "ilocs")
-        )
 
-        def unlink_all():
-            selection_link.unlink()
-
-        unlink = unlink_all
-
-    # requires point-point correspondence
-    def expand_neighbors():
-        nonlocal unlink
-        unlink()
-
-        def transform(emb: Embedding):
-            def _expand_neighbors(ilocs):
-                return emb.knn_indices[ilocs].ravel()
-
-            return _expand_neighbors
-
-        link = ipywidgets.link(
-            source=(left, "ilocs"),
-            target=(right, "ilocs"),
-            transform=(transform(a), transform(b)),
-        )
-
-        unlink = link.unlink
+        unlink = link_widgets(
+            (left.categorial_scatter.widget, "selection"),
+            (right.categorial_scatter.widget, "selection"),
+        ).unlink
 
     # requires label-label correspondence
     def expand_phenotype():
@@ -340,7 +321,7 @@ def compare(
 
             return _expand_phenotype
 
-        link = ipywidgets.link(
+        link = link_widgets(
             source=(left.logo, "selection"),
             target=(right.logo, "selection"),
             transform=(transform(left, right), transform(right, left)),
@@ -353,7 +334,6 @@ def compare(
         selection_type_options = [
             ("synced", sync),
             ("independent", independent),
-            ("neighbors", expand_neighbors),
             ("phenotype", expand_phenotype),
         ]
     else:
@@ -397,14 +377,12 @@ def compare(
         ]
     )
 
-    scatters = [
+    for s in [
         left.categorial_scatter,
         left.metric_scatter,
         right.categorial_scatter,
         right.metric_scatter,
-    ]
-
-    for s in scatters:
+    ]:
         s.height(row_height)
 
     main = ipywidgets.GridBox(
@@ -419,6 +397,5 @@ def compare(
     label_slider.value = 1
     left.distances, right.distances = metric.value()
     widget = ipywidgets.VBox([header, main, out])
-    widget.data = left._data
 
     return widget
