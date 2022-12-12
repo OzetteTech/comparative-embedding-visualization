@@ -3,6 +3,8 @@ from typing import Callable, Literal, Union
 import numpy as np
 import pandas as pd
 from sklearn.neighbors import NearestNeighbors
+import scipy.stats.mstats
+
 
 from embcomp.metrics import count_neighbor_labels
 
@@ -166,6 +168,10 @@ def transform_abundance(
     abundances : label abundances
     force_include_self: force include self abundance even if missing from lable-level representaion.
     """
+    assert (
+        label_representation.index.values.to_list()
+        == label_representation.columns.to_list()
+    ), "must be a symmetric DataFrame with shared rows/cols"
 
     mask = label_representation.to_numpy() > 0
     if force_include_self:
@@ -177,6 +183,44 @@ def transform_abundance(
     )
 
 
+def merge_abundances_left(left: pd.DataFrame, right: pd.DataFrame):
+    """Create single label-mask using all labels from left and right.
+    If a label in `right` is missing in `left`, the neighbors from `right`
+    are copied into `left` for that label. The label itself is set to False.
+    """
+    index = pd.CategoricalIndex(left.index.union(right.index).sort_values())
+    merged = pd.DataFrame(
+        np.full((len(index),) * 2, 0),
+        columns=index,
+        index=index,
+    )
+    # copy left values in to unified matrix
+    merged.loc[left.index, left.columns] = left
+    # find missing labels for left and populate with right
+    missing = list(set(index).difference(left.index))
+    merged.loc[missing, right.columns] = right.loc[missing, right.columns]
+    # make sure to zero out diagonal for right-copied rows
+    merged.loc[missing, missing] = 0
+    return merged
+
+
 def relative_abundance(abundance_representation: pd.DataFrame):
 
     return np.diagonal(abundance_representation) / abundance_representation.sum(axis=1)
+
+
+def centered_logratio(abundance_representation: pd.DataFrame):
+    copy = abundance_representation.to_numpy().copy()
+    diag = np.diagonal(copy)
+    np.fill_diagonal(copy, np.where(diag > 0, diag, 1))
+
+    def _compute(row, i):
+        value = row[i]
+        values = row[np.nonzero(row)]
+        gmean = scipy.stats.mstats.gmean(values)
+        ratio = np.log(value) / np.log(gmean)
+        print(f"{value=} {values=} {gmean=}, {np.log(value)=} {np.log(gmean)=} {ratio=}")
+        return ratio
+
+    return np.array([_compute(row, i) for i, row in enumerate(copy)])
+
