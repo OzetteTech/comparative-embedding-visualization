@@ -89,9 +89,9 @@ class Embedding:
         return EmbeddingWidgetCollection(self, **kwargs)
 
 
-LABEL_COLUMN = "_label"
-ROBUST_LABEL_COLUMN = "_robust_label"
-DISTANCE_COLUMN = "_distance"
+_LABEL_COLUMN = "_label"
+_ROBUST_LABEL_COLUMN = "_robust_label"
+_DISTANCE_COLUMN = "_distance"
 
 
 class EmbeddingWidgetCollection(traitlets.HasTraits):
@@ -144,35 +144,35 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     @property
     def labels(self) -> pd.Series:
-        return self._data[LABEL_COLUMN]
+        return self._data[_LABEL_COLUMN]
 
     @property
     def robust_labels(self) -> pd.Series:
-        return self._data[ROBUST_LABEL_COLUMN]
+        return self._data[_ROBUST_LABEL_COLUMN]
 
     @labels.setter
     def labels(self, labels: npt.ArrayLike):
         self.logo.labels = labels
-        self._data[LABEL_COLUMN] = labels
-        self._data[ROBUST_LABEL_COLUMN] = self._labeler(labels)
+        self._data[_LABEL_COLUMN] = labels
+        self._data[_ROBUST_LABEL_COLUMN] = self._labeler(labels)
 
     @traitlets.observe("inverted")
     def _update_metric_scatter(self, *args, **kwargs):
         cmap = "viridis_r" if self.inverted else "viridis"
-        self.metric_scatter.color(by=DISTANCE_COLUMN, map=cmap, norm=[0, 1])
+        self.metric_scatter.color(by=_DISTANCE_COLUMN, map=cmap, norm=[0, 1])
         self.metric_scatter.legend(True)
 
     def _update_categorial_scatter(self, *args, **kwargs):
         self.categorial_scatter.legend(False)
-        self.categorial_scatter.color(by=ROBUST_LABEL_COLUMN, map=self._colormap)
+        self.categorial_scatter.color(by=_ROBUST_LABEL_COLUMN, map=self._colormap)
 
     @property
     def distances(self) -> pd.Series:
-        return self._data[DISTANCE_COLUMN]
+        return self._data[_DISTANCE_COLUMN]
 
     @distances.setter
     def distances(self, distances: npt.NDArray[np.float_]):
-        self._data[DISTANCE_COLUMN] = distances
+        self._data[_DISTANCE_COLUMN] = distances
         self._update_metric_scatter()
 
     @property
@@ -314,20 +314,29 @@ def compare(
         nonlocal unlink
         unlink()
 
-        def transform(from_: EmbeddingWidgetCollection, to_: EmbeddingWidgetCollection):
-            def _expand_phenotype(base_selection):
-                from_labels = set(from_.labels.iloc[base_selection].unique())
-                return np.where(to_.labels.isin(from_labels))[0]
+        def transform(src: EmbeddingWidgetCollection):
+            def on_change(change):
+                phenotypes = set(src.labels.iloc[change.new].unique())
+                print(phenotypes)
 
-            return _expand_phenotype
+                def ilocs(labels):
+                    return np.where(labels.isin(phenotypes))[0]
 
-        link = link_widgets(
-            source=(left.categorial_scatter.widget, "selection"),
-            target=(right.categorial_scatter.widget, "selection"),
-            transform=(transform(left, right), transform(right, left)),
-        )
+                left.categorial_scatter.widget.selection = ilocs(left.robust_labels)
+                right.categorial_scatter.widget.selection = ilocs(right.robust_labels)
 
-        unlink = link.unlink
+            return on_change
+
+        transform_left = transform(left)
+        left.categorial_scatter.widget.observe(transform_left, names="selection")
+        transform_right = transform(right)
+        right.categorial_scatter.widget.observe(transform_right, names="selection")
+
+        def unlink_all():
+            left.categorial_scatter.unobserve(transform_left, names="selection")
+            right.categorial_scatter.unobserve(transform_right, names="selection")
+
+        unlink = unlink_all
 
     if pointwise_correspondence:
         initial_selection = sync
@@ -353,9 +362,6 @@ def compare(
     initial_selection()
     # SELECTION END
 
-    out = ipywidgets.Output()
-
-    @out.capture()
     def on_label_level_change(change):
         left.labels = trim_label_series(a.labels, len(markers) - change.new)
         right.labels = trim_label_series(b.labels, len(markers) - change.new)
@@ -396,6 +402,6 @@ def compare(
     # initialize
     label_slider.value = 1
     left.distances, right.distances = metric.value()
-    widget = ipywidgets.VBox([header, main, out])
+    widget = ipywidgets.VBox([header, main])
 
     return widget
