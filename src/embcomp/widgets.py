@@ -322,8 +322,8 @@ def compare(
             return _expand_phenotype
 
         link = link_widgets(
-            source=(left.logo, "selection"),
-            target=(right.logo, "selection"),
+            source=(left.categorial_scatter.widget, "selection"),
+            target=(right.categorial_scatter.widget, "selection"),
             transform=(transform(left, right), transform(right, left)),
         )
 
