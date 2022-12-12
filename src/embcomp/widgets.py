@@ -53,7 +53,7 @@ def create_colormaps(
     lookup = dict(
         zip(
             all_categories,
-            itertools.cycle(jscatter.glasbey_dark),
+            itertools.cycle(jscatter.glasbey_dark[1:]),
         )
     )
 
@@ -137,6 +137,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self._labeler = lambda labels: robust_labels(labels, embedding.robust)
         self.labels = embedding.labels
         self.distances = 0  # type: ignore
+        self.colormap = create_colormaps(self.robust_labels.cat.categories)
 
     @property
     def labels(self) -> pd.Series:
@@ -151,9 +152,6 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self.logo.labels = labels
         self._data[LABEL_COLUMN] = labels
         self._data[ROBUST_LABEL_COLUMN] = self._labeler(labels)
-        if not hasattr(self, "_colormap"):
-            self._colormap = create_colormaps(self.robust_labels.cat.categories)
-        self._update_categorial_scatter()
 
     @traitlets.observe("inverted")
     def _update_metric_scatter(self, *args, **kwargs):
@@ -206,7 +204,7 @@ def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
 def compare(
     a: Union[tuple[pd.DataFrame, KnnIndices], Embedding],
     b: Union[tuple[pd.DataFrame, KnnIndices], Embedding],
-    row_height: int = 400,
+    row_height: int = 250,
 ):
     a = Embedding.from_df(a[0], a[1]) if isinstance(a, tuple) else a
     b = Embedding.from_df(b[0], b[1]) if isinstance(b, tuple) else b
@@ -379,11 +377,8 @@ def compare(
 
     @out.capture()
     def on_label_level_change(change):
-        max_label_level = len(markers) - 1
-        left_new = trim_label_series(a.labels, max_label_level - change.new)
-        right_new = trim_label_series(b.labels, max_label_level - change.new)
-        left.labels = left_new
-        right.labels = right_new
+        left.labels = trim_label_series(a.labels, len(markers) - change.new)
+        right.labels = trim_label_series(b.labels, len(markers) - change.new)
         left.colormap, right.colormap = create_colormaps(
             left.robust_labels.cat.categories,
             right.robust_labels.cat.categories,
@@ -421,7 +416,7 @@ def compare(
     )
 
     # initialize
-    label_slider.value = 0
+    label_slider.value = 1
     left.distances, right.distances = metric.value()
     widget = ipywidgets.VBox([header, main, out])
     widget.data = left._data

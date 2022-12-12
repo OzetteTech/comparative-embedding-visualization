@@ -43,7 +43,6 @@ def trim_labels(data, level: int):
 
 
 def trim_label_series(labels: pd.Series, level: int):
-    print(f"{level=}")
     if level == 0:
         return labels
     return (
@@ -297,8 +296,8 @@ class MarkerIndicator(HTMLWidget):
         }
     </style>
     <div class="marker-level-container">
-        {% for marker in markers[:(level + 1)] %}<div highlight>{{ marker }}</div>{% endfor %}
-        {% for marker in markers[(level + 1):] %}<div>{{ marker }}</div>{% endfor %}
+        {% for marker in markers[:level] %}<div highlight>{{ marker }}</div>{% endfor %}
+        {% for marker in markers[level:] %}<div>{{ marker }}</div>{% endfor %}
     </div>
     """)
     # fmt: on
@@ -309,9 +308,9 @@ class MarkerIndicator(HTMLWidget):
 def marker_slider(markers: list[str]):
     slider = ipywidgets.IntSlider(
         description="marker level:",
-        value=len(markers) - 1,
-        min=0,
-        max=len(markers) - 1,
+        value=len(markers),
+        min=1,
+        max=len(markers),
         continuous_update=False,
     )
     marker = MarkerIndicator(markers=markers)
