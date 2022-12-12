@@ -43,6 +43,7 @@ def trim_labels(data, level: int):
 
 
 def trim_label_series(labels: pd.Series, level: int):
+    print(f"{level=}")
     if level == 0:
         return labels
     return (
@@ -90,9 +91,9 @@ class HTMLWidget(ipywidgets.Output):
         self._render()
 
     def _render(self):
-        self.clear_output()
         state = {name: getattr(self, name) for name in self.class_own_traits()}
         html = self._template.render(id=uuid.uuid4().hex, **state)
+        self.clear_output()
         with self:
             IPython.display.display(IPython.display.HTML(html))
 
@@ -268,3 +269,52 @@ class AnnotationLogo(ipywidgets.VBox):
 
         self._threshold.max = max(l["count"] for l in self._logo.counts)  # type: ignore
         self._threshold.value = self._threshold.max
+
+
+class MarkerIndicator(HTMLWidget):
+    # fmt: off
+    _template = jinja2.Template("""
+    <style>
+        .marker-level-container {
+            display: flex;
+            font-family: monospace;
+        }
+
+        .marker-level-container > div {
+            padding: 0px 3px;
+            background-color: #f5f5f5;
+            border-right: 1px solid;
+            border-top: 1px solid;
+            border-bottom: 1px solid;
+        }
+
+        .marker-level-container > div:first-child {
+            border-left: 1px solid;
+        }
+
+        .marker-level-container > div[highlight] {
+            background-color: #d5d5d5;
+        }
+    </style>
+    <div class="marker-level-container">
+        {% for marker in markers[:(level + 1)] %}<div highlight>{{ marker }}</div>{% endfor %}
+        {% for marker in markers[(level + 1):] %}<div>{{ marker }}</div>{% endfor %}
+    </div>
+    """)
+    # fmt: on
+    markers = traitlets.List()
+    level = traitlets.Int(0)
+
+
+def marker_slider(markers: list[str]):
+    slider = ipywidgets.IntSlider(
+        description="marker level:",
+        value=len(markers) - 1,
+        min=0,
+        max=len(markers) - 1,
+        continuous_update=False,
+    )
+    marker = MarkerIndicator(markers=markers)
+    ipywidgets.dlink((slider, "value"), (marker, "level"))
+    return slider, marker
+

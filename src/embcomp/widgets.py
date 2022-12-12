@@ -1,6 +1,6 @@
 import dataclasses
 import itertools
-from typing import Callable, Union
+from typing import Callable, Iterable, Union, overload
 
 import ipywidgets
 import jscatter
@@ -8,10 +8,9 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import traitlets
-from scipy.spatial import Delaunay
 
 import embcomp.metrics as metrics
-from embcomp.logo import AnnotationLogo, parse_label, trim_label_series
+from embcomp.logo import AnnotationLogo, parse_label, trim_label_series, marker_slider
 
 Coordinates = npt.ArrayLike
 KnnIndices = npt.NDArray[np.int_]
@@ -33,14 +32,27 @@ def robust_labels(
     return pd.Series(labels, dtype="category")
 
 
-def create_shared_colormaps(
-    a: "PairwiseComponent", b: "PairwiseComponent"
-) -> tuple[dict, dict]:
+@overload
+def create_colormaps(cats: Iterable[str]) -> dict:
+    ...
+
+
+@overload
+def create_colormaps(cats: Iterable[str], *other: Iterable[str]) -> tuple[dict, ...]:
+    ...
+
+
+def create_colormaps(
+    cats: Iterable[str], *others: Iterable[str]
+) -> Union[dict, tuple[dict, ...]]:
+    all_categories = set(cats)
+    for other in others:
+        all_categories.update(other)
 
     # create unified colormap
     lookup = dict(
         zip(
-            set(a.labels.cat.categories).union(b.labels.cat.categories),
+            all_categories,
             itertools.cycle(jscatter.glasbey_dark),
         )
     )
@@ -49,9 +61,10 @@ def create_shared_colormaps(
     lookup[NON_ROBUST_LABEL] = "#333333"
 
     # create separate colormaps for each component
-    return tuple(
-        {label: lookup[label] for label in cmp.labels.cat.categories} for cmp in (a, b)
-    )
+    cmaps = tuple({c: lookup[c] for c in cmp} for cmp in (cats, *others))
+    if len(cmaps) == 1:
+        return cmaps[0]
+    return cmaps
 
 
 @dataclasses.dataclass
@@ -70,85 +83,113 @@ class Embedding:
             robust=df["robust"] if "robust" in df else None,
         )
 
+    def widgets(self, **kwargs):
+        return EmbeddingWidgetCollection(self, **kwargs)
+
 
 LABEL_COLUMN = "_label"
+ROBUST_LABEL_COLUMN = "_robust_label"
 DISTANCE_COLUMN = "_distance"
 
 
-class PairwiseComponent(traitlets.HasTraits):
+class EmbeddingWidgetCollection(traitlets.HasTraits):
     inverted = traitlets.Bool(False)
+    ilocs = traitlets.Any()
 
     def __init__(
-        self, scatter: jscatter.Scatter, logo: AnnotationLogo, embedding: Embedding
+        self,
+        embedding: Embedding,
+        background_color: str = "black",
+        axes: bool = False,
+        opacity_unselected: float = 0.05,
+        **kwargs,
     ):
-        self.scatter = scatter
-        self.logo = logo
-        self.embedding = embedding
+        X = np.array(embedding.coords)
+        self._data = pd.DataFrame({"x": X[:, 0], "y": X[:, 1]})
 
-        self.link = ipywidgets.link(
-            (self.scatter.widget, "selection"), (self.logo, "selection")
+        categorial_scatter, metric_scatter = (
+            jscatter.Scatter(
+                data=self._data,
+                x="x",
+                y="y",
+                background_color=background_color,
+                axes=axes,
+                opacity_unselected=opacity_unselected,
+                **kwargs,
+            )
+            for _ in range(2)
         )
-        self._by = LABEL_COLUMN
-        self.labels = self.embedding.labels
-        # TODO: fix me. hack to initialize the colormap
-        self._colormap, _ = create_shared_colormaps(self, self)
-        self.color_by_labels()
+        # link the plots together with js
+        ipywidgets.jslink(
+            (categorial_scatter.widget, "selection"),
+            (metric_scatter.widget, "selection"),
+        )
+        # expose a _single_ selection to others
+        ipywidgets.link(
+            (categorial_scatter.widget, "selection"),
+            (self, "ilocs"),
+        )
 
-    def show(self):
-        return ipywidgets.VBox([self.scatter.show(), self.logo])
+        self.categorial_scatter = categorial_scatter
+        self.metric_scatter = metric_scatter
+        self.logo = AnnotationLogo(embedding.labels)
+
+        self._labeler = lambda labels: robust_labels(labels, embedding.robust)
+        self.labels = embedding.labels
+        self.distances = 0  # type: ignore
+
+    @property
+    def labels(self) -> pd.Series:
+        return self._data[LABEL_COLUMN]
+
+    @property
+    def robust_labels(self) -> pd.Series:
+        return self._data[ROBUST_LABEL_COLUMN]
+
+    @labels.setter
+    def labels(self, labels: npt.ArrayLike):
+        self.logo.labels = labels
+        self._data[LABEL_COLUMN] = labels
+        self._data[ROBUST_LABEL_COLUMN] = self._labeler(labels)
+        if not hasattr(self, "_colormap"):
+            self._colormap = create_colormaps(self.robust_labels.cat.categories)
+        self._update_categorial_scatter()
+
+    @traitlets.observe("inverted")
+    def _update_metric_scatter(self, *args, **kwargs):
+        cmap = "viridis_r" if self.inverted else "viridis"
+        self.metric_scatter.color(by=DISTANCE_COLUMN, map=cmap, norm=[0, 1])
+        self.metric_scatter.legend(True)
+
+    def _update_categorial_scatter(self, *args, **kwargs):
+        self.categorial_scatter.legend(False)
+        self.categorial_scatter.color(by=ROBUST_LABEL_COLUMN, map=self._colormap)
+
+    @property
+    def distances(self) -> pd.Series:
+        return self._data[DISTANCE_COLUMN]
+
+    @distances.setter
+    def distances(self, distances: npt.NDArray[np.float_]):
+        self._data[DISTANCE_COLUMN] = distances
+        self._update_metric_scatter()
 
     @property
     def colormap(self):
         return self._colormap
 
     @colormap.setter
-    def colormap(self, cmap):
+    def colormap(self, cmap: dict):
         self._colormap = cmap
-        if self._by == LABEL_COLUMN:
-            self.color_by_labels()
+        self._update_categorial_scatter()
 
-    def color_by_labels(self):
-        self._by = LABEL_COLUMN
-        self.scatter.legend(False)
-        self.scatter.color(by=LABEL_COLUMN, map=self._colormap)
-
-    def color_by_distances(self):
-        self._by = DISTANCE_COLUMN
-        cmap = "viridis_r" if self.inverted else "viridis"
-        self.scatter.color(by=DISTANCE_COLUMN, map=cmap, norm=[0, 1])
-        self.scatter.legend(True)
-
-    @traitlets.observe("inverted")
-    def _update_colormap(self, _change):
-        if self._by == DISTANCE_COLUMN:
-            self.color_by_distances()
-
-    @property
-    def _data(self):
-        assert self.scatter._data is not None
-        return self.scatter._data
-
-    @property
-    def distances(self):
-        return self._data[DISTANCE_COLUMN]
-
-    @distances.setter
-    def distances(self, distances: npt.NDArray[np.float_]):
-        self._data[DISTANCE_COLUMN] = distances
-        if self._by == DISTANCE_COLUMN:
-            self.color_by_distances()
-
-    @property
-    def labels(self) -> pd.Series:
-        return self._data[LABEL_COLUMN]
-
-    @labels.setter
-    def labels(self, labels: npt.ArrayLike):
-        self.logo.labels = labels
-        self._data[LABEL_COLUMN] = robust_labels(labels, self.embedding.robust)
-        if self._by == LABEL_COLUMN:
-            # self.color_by_labels()
-            ...
+    def show(self):
+        return ipywidgets.VBox(
+            [
+                self.categorial_scatter.show(),
+                self.metric_scatter.show(),
+            ]
+        )
 
 
 def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
@@ -165,7 +206,7 @@ def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
 def compare(
     a: Union[tuple[pd.DataFrame, KnnIndices], Embedding],
     b: Union[tuple[pd.DataFrame, KnnIndices], Embedding],
-    row_height: int = 600,
+    row_height: int = 400,
 ):
     a = Embedding.from_df(a[0], a[1]) if isinstance(a, tuple) else a
     b = Embedding.from_df(b[0], b[1]) if isinstance(b, tuple) else b
@@ -173,72 +214,25 @@ def compare(
     pointwise_correspondence = has_pointwise_correspondence(a, b)
 
     # representative label
-    max_label_level = len(parse_label(a.labels.values[0])) - 1
+    markers = [m.name for m in parse_label(a.labels.iloc[0])]
+    label_slider, marker_indicator = marker_slider(markers)
 
-    label_slider = ipywidgets.IntSlider(
-        description="label level:",
-        value=max_label_level,
-        min=0,
-        max=max_label_level,
-        continuous_update=False,
-    )
-
-    left, right = (
-        PairwiseComponent(
-            scatter=jscatter.Scatter(
-                data=pd.DataFrame(
-                    {"x": np.array(emb.coords)[:, 0], "y": np.array(emb.coords)[:, 1]}
-                ),
-                x="x",
-                y="y",
-                legend=True,
-                background_color="black",
-                axes=False,
-                opacity_unselected=0.05,
-                height=row_height,
-            ),
-            logo=AnnotationLogo(emb.labels),
-            embedding=emb,
-        )
-        for emb in (a, b)
-    )
-
-    def jaccard_pointwise():
-        distances = metrics.jaccard_pointwise(
-            left.embedding.knn_indices,
-            right.embedding.knn_indices,
-        )
-        return distances, distances
-
-    def jaccard_groupwise():
-        grp_distances = metrics.jaccard_groupwise(
-            left.embedding.knn_indices,
-            right.embedding.knn_indices,
-            np.array(left.labels),
-        )
-        distances = left.labels.map(grp_distances)
-        return distances, distances
+    left, right = a.widgets(), b.widgets()
 
     def counts():
         alabels = pd.Series(left.logo.labels, dtype="category", name="label")
-        acounts = metrics.count_neighbor_labels(
-            left.embedding.knn_indices,
-            alabels,
-        )
+        acounts = metrics.count_neighbor_labels(a.knn_indices, alabels)
         blabels = pd.Series(right.logo.labels, dtype="category", name="label")
-        bcounts = metrics.count_neighbor_labels(
-            right.embedding.knn_indices,
-            blabels,
-        )
+        bcounts = metrics.count_neighbor_labels(b.knn_indices, blabels)
         return (
             pd.DataFrame(acounts, index=alabels),
             pd.DataFrame(bcounts, index=blabels),
         )
 
-    def point_label():
-        acounts, bcounts = counts()
-        distances = metrics.rowise_cosine_similarity(acounts.values, bcounts.values)
-        return distances, distances
+    # def point_label():
+    #     acounts, bcounts = counts()
+    #     distances = metrics.rowise_cosine_similarity(acounts.values, bcounts.values)
+    #     return distances, distances
 
     def label_counts():
         acounts, bcounts = counts()
@@ -279,15 +273,6 @@ def compare(
         ("Label-Label similarity", label_label)
     ]
 
-    if pointwise_correspondence:
-        metric_options.extend(
-            [
-                ("Point-Label similarity", point_label),
-                ("Groupwise Jaccard index", jaccard_groupwise),
-                ("Jaccard index", jaccard_pointwise),
-            ]
-        )
-
     metric = ipywidgets.Dropdown(
         options=metric_options,
         value=label_label,
@@ -304,22 +289,6 @@ def compare(
     inverted = ipywidgets.Checkbox(False, description="invert colormap")
     ipywidgets.link((left, "inverted"), (inverted, "value"))
     ipywidgets.link((right, "inverted"), (inverted, "value"))
-
-    color_by = ipywidgets.RadioButtons(
-        options=["label", "metric"],
-        value="label",
-        description="color by:",
-    )
-
-    def on_color_by_change(change):
-        if change.new == "metric":
-            left.color_by_distances()
-            right.color_by_distances()
-        else:
-            left.color_by_labels()
-            right.color_by_labels()
-
-    color_by.observe(on_color_by_change, names="value")
     # COLOR END
 
     # SELECTION START
@@ -334,16 +303,11 @@ def compare(
         nonlocal unlink
         unlink()
         selection_link = ipywidgets.link(
-            source=(left.logo, "selection"), target=(right.logo, "selection")
-        )
-        hovering_link = ipywidgets.link(
-            source=(left.scatter.widget, "hovering"),
-            target=(right.scatter.widget, "hovering"),
+            source=(left, "ilocs"), target=(right, "ilocs")
         )
 
         def unlink_all():
             selection_link.unlink()
-            hovering_link.unlink()
 
         unlink = unlink_all
 
@@ -352,16 +316,16 @@ def compare(
         nonlocal unlink
         unlink()
 
-        def transform(cmp: PairwiseComponent):
-            def _expand_neighbors(selection):
-                return cmp.embedding.knn_indices[selection].ravel()
+        def transform(emb: Embedding):
+            def _expand_neighbors(ilocs):
+                return emb.knn_indices[ilocs].ravel()
 
             return _expand_neighbors
 
         link = ipywidgets.link(
-            source=(left.logo, "selection"),
-            target=(right.logo, "selection"),
-            transform=(transform(left), transform(right)),
+            source=(left, "ilocs"),
+            target=(right, "ilocs"),
+            transform=(transform(a), transform(b)),
         )
 
         unlink = link.unlink
@@ -371,11 +335,10 @@ def compare(
         nonlocal unlink
         unlink()
 
-        def transform(from_: PairwiseComponent, to_: PairwiseComponent):
+        def transform(from_: EmbeddingWidgetCollection, to_: EmbeddingWidgetCollection):
             def _expand_phenotype(base_selection):
-                # use the phenotype from logo, PairwiseComponent.labels have robust/non-robust
-                from_labels = set(from_.logo.labels[base_selection].unique())
-                return np.where(to_.logo.labels.isin(from_labels))[0]
+                from_labels = set(from_.labels.iloc[base_selection].unique())
+                return np.where(to_.labels.isin(from_labels))[0]
 
             return _expand_phenotype
 
@@ -387,31 +350,6 @@ def compare(
 
         unlink = link.unlink
 
-    # requires point-point correspondence
-    def expand_convex_hull():
-        nonlocal unlink
-        unlink()
-
-        def transform(to: PairwiseComponent):
-            coords = np.array(to.embedding.coords)
-
-            def _expand_convex_hull(from_selection):
-                if from_selection is None or len(from_selection) == 0:
-                    return []
-                hull = Delaunay(coords[from_selection])
-                in_hull = hull.find_simplex(coords) >= 0
-                return np.where(in_hull)[0]
-
-            return _expand_convex_hull
-
-        link = ipywidgets.link(
-            source=(left.logo, "selection"),
-            target=(right.logo, "selection"),
-            transform=(transform(to=right), transform(to=left)),
-        )
-
-        unlink = link.unlink
-
     if pointwise_correspondence:
         initial_selection = sync
         selection_type_options = [
@@ -419,7 +357,6 @@ def compare(
             ("independent", independent),
             ("neighbors", expand_neighbors),
             ("phenotype", expand_phenotype),
-            ("neighbors convex hull", expand_convex_hull),
         ]
     else:
         initial_selection = independent
@@ -428,7 +365,7 @@ def compare(
             ("phenotype", expand_phenotype),
         ]
 
-    selection_type = ipywidgets.RadioButtons(
+    selection_type = ipywidgets.Dropdown(
         options=selection_type_options,
         value=initial_selection,
         description="selection",
@@ -438,33 +375,42 @@ def compare(
     initial_selection()
     # SELECTION END
 
-    # LABELS START
-    active_labels = ipywidgets.Label("markers: ")
+    out = ipywidgets.Output()
 
+    @out.capture()
     def on_label_level_change(change):
+        max_label_level = len(markers) - 1
         left_new = trim_label_series(a.labels, max_label_level - change.new)
         right_new = trim_label_series(b.labels, max_label_level - change.new)
         left.labels = left_new
         right.labels = right_new
-        left.colormap, right.colormap = create_shared_colormaps(left, right)
-        left.distances, right.distances = metric.value()
-        active_labels.value = "markers: " + " ".join(
-            l.name for l in parse_label(left_new[0])
+        left.colormap, right.colormap = create_colormaps(
+            left.robust_labels.cat.categories,
+            right.robust_labels.cat.categories,
         )
+        left.distances, right.distances = metric.value()
 
     label_slider.observe(on_label_level_change, names="value")
     # LABELS END
 
-    header = ipywidgets.HBox(
+    header = ipywidgets.VBox(
         [
-            ipywidgets.VBox([label_slider, inverted]),
-            selection_type,
-            ipywidgets.VBox([color_by, metric]),
-        ],
-        layout=ipywidgets.Layout(width="80%"),
+            marker_indicator,
+            ipywidgets.HBox(
+                [label_slider, selection_type, metric, inverted],
+            ),
+        ]
     )
 
-    header = ipywidgets.VBox([header, active_labels])
+    scatters = [
+        left.categorial_scatter,
+        left.metric_scatter,
+        right.categorial_scatter,
+        right.metric_scatter,
+    ]
+
+    for s in scatters:
+        s.height(row_height)
 
     main = ipywidgets.GridBox(
         children=[left.show(), right.show()],
@@ -477,11 +423,7 @@ def compare(
     # initialize
     label_slider.value = 0
     left.distances, right.distances = metric.value()
-
-    widget = ipywidgets.VBox([header, main])
-    widget.left = left
-    widget.right = right
-    widget.label_counts = label_counts
-    widget.label_label = label_label
+    widget = ipywidgets.VBox([header, main, out])
+    widget.data = left._data
 
     return widget
