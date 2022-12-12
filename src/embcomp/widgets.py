@@ -96,7 +96,6 @@ _DISTANCE_COLUMN = "_distance"
 
 class EmbeddingWidgetCollection(traitlets.HasTraits):
     inverted = traitlets.Bool(False)
-    ilocs = traittypes.Array([])
 
     def __init__(
         self,
@@ -125,11 +124,6 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         link_widgets(
             (categorial_scatter.widget, "selection"),
             (metric_scatter.widget, "selection"),
-        )
-        # expose a _single_ selection to others
-        link_widgets(
-            (categorial_scatter.widget, "selection"),
-            (self, "ilocs"),
         )
 
         self.categorial_scatter = categorial_scatter
@@ -310,14 +304,13 @@ def compare(
         ).unlink
 
     # requires label-label correspondence
-    def expand_phenotype():
+    def phenotype():
         nonlocal unlink
         unlink()
 
-        def transform(src: EmbeddingWidgetCollection):
-            def on_change(change):
+        def expand_phenotype(src: EmbeddingWidgetCollection):
+            def handler(change):
                 phenotypes = set(src.labels.iloc[change.new].unique())
-                print(phenotypes)
 
                 def ilocs(labels):
                     return np.where(labels.isin(phenotypes))[0]
@@ -325,11 +318,11 @@ def compare(
                 left.categorial_scatter.widget.selection = ilocs(left.robust_labels)
                 right.categorial_scatter.widget.selection = ilocs(right.robust_labels)
 
-            return on_change
+            return handler
 
-        transform_left = transform(left)
+        transform_left = expand_phenotype(left)
         left.categorial_scatter.widget.observe(transform_left, names="selection")
-        transform_right = transform(right)
+        transform_right = expand_phenotype(right)
         right.categorial_scatter.widget.observe(transform_right, names="selection")
 
         def unlink_all():
@@ -343,13 +336,13 @@ def compare(
         selection_type_options = [
             ("synced", sync),
             ("independent", independent),
-            ("phenotype", expand_phenotype),
+            ("phenotype", phenotype),
         ]
     else:
         initial_selection = independent
         selection_type_options = [
             ("independent", independent),
-            ("phenotype", expand_phenotype),
+            ("phenotype", phenotype),
         ]
 
     selection_type = ipywidgets.Dropdown(
