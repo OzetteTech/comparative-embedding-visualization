@@ -136,6 +136,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self.distances = 0  # type: ignore
         self.colormap = create_colormaps(self.robust_labels.cat.categories)
 
+    def zoom(self, to: Union[None, npt.NDArray] = None):
+        if to is not None:
+            to = to if len(to) > 0 else None
+        for s in self.scatters:
+            s.zoom(to=to)
+
     @property
     def labels(self) -> pd.Series:
         return self._data[_LABEL_COLUMN]
@@ -295,6 +301,36 @@ def compare(
     link_widgets((right, "inverted"), (inverted, "value"))
     # COLOR END
 
+    # ZOOM START
+    zoom = ipywidgets.Checkbox(False, description="auto-zoom")
+
+    def handle_selection_change_zoom(emb: EmbeddingWidgetCollection):
+        def on_change(change):
+            if zoom.value == False:
+                return
+            emb.zoom(to=change.new)
+
+        return on_change
+
+    left.categorial_scatter.widget.observe(
+        handle_selection_change_zoom(left), names="selection"
+    )
+    right.categorial_scatter.widget.observe(
+        handle_selection_change_zoom(right), names="selection"
+    )
+
+    def handle_zoom_change(change):
+        if change.new == False:
+            left.zoom(to=None)
+            right.zoom(to=None)
+        else:
+            left.zoom(to=left.categorial_scatter.selection()) 
+            right.zoom(to=right.categorial_scatter.selection())
+
+    zoom.observe(handle_zoom_change, names="value")
+
+    # ZOOM END
+
     # SELECTION START
     unlink: Callable[[], None] = lambda: None
 
@@ -321,11 +357,9 @@ def compare(
             def handler(change):
                 phenotypes = set(src.labels.iloc[change.new].unique())
 
-                def ilocs(labels):
-                    return np.where(labels.isin(phenotypes))[0]
-
-                left.categorial_scatter.widget.selection = ilocs(left.robust_labels)
-                right.categorial_scatter.widget.selection = ilocs(right.robust_labels)
+                for emb in (left, right):
+                    ilocs = np.where(emb.robust_labels.isin(phenotypes))[0]
+                    emb.categorial_scatter.widget.selection = ilocs
 
             return handler
 
@@ -380,7 +414,7 @@ def compare(
         [
             marker_indicator,
             ipywidgets.HBox(
-                [label_slider, selection_type, metric, inverted],
+                [label_slider, selection_type, metric, inverted, zoom],
             ),
         ]
     )
