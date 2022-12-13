@@ -8,11 +8,11 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import traitlets
-from traittypes import traittypes
 
 import embcomp.metrics as metrics
 from embcomp._widget_utils import link_widgets
 from embcomp.logo import AnnotationLogo, marker_slider, parse_label, trim_label_series
+from embcomp.test_cases import metrics as _metrics
 
 Coordinates = npt.ArrayLike
 KnnIndices = npt.NDArray[np.int_]
@@ -86,7 +86,7 @@ class Embedding:
         )
 
     def widgets(self, **kwargs):
-        return EmbeddingWidgetCollection(self, **kwargs)
+        return EmbeddingWidgetCollection.from_embedding(self, **kwargs)
 
 
 _LABEL_COLUMN = "_label"
@@ -99,18 +99,42 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     def __init__(
         self,
-        embedding: Embedding,
+        labels: pd.Series,
+        categorial: jscatter.Scatter,
+        metric: jscatter.Scatter,
+        logo: AnnotationLogo,
+        labeler: Callable[[npt.ArrayLike], pd.Series],
+    ):
+        self.categorial = categorial
+        self.metric = metric
+        self.logo = logo
+        self._labeler = labeler
+
+        self.labels = labels
+        self.distances = 0  # type: ignore
+        self.colormap = create_colormaps(self.robust_labels.cat.categories)
+
+    @property
+    def _data(self) -> pd.DataFrame:
+        assert self.categorial._data is self.metric._data
+        assert self.categorial._data is not None
+        return self.categorial._data
+
+    @classmethod
+    def from_embedding(
+        cls,
+        emb: Embedding,
         background_color: str = "black",
         axes: bool = False,
         opacity_unselected: float = 0.05,
         **kwargs,
     ):
-        X = np.array(embedding.coords)
-        self._data = pd.DataFrame({"x": X[:, 0], "y": X[:, 1]})
+        X = np.array(emb.coords)
+        data = pd.DataFrame({"x": X[:, 0], "y": X[:, 1]})
 
-        categorial_scatter, metric_scatter = (
+        categorial, metric = (
             jscatter.Scatter(
-                data=self._data,
+                data=data,
                 x="x",
                 y="y",
                 background_color=background_color,
@@ -122,25 +146,19 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         )
         # link the plots together with js
         link_widgets(
-            (categorial_scatter.widget, "selection"),
-            (metric_scatter.widget, "selection"),
+            (categorial.widget, "selection"),
+            (metric.widget, "selection"),
         )
 
-        self.categorial_scatter = categorial_scatter
-        self.metric_scatter = metric_scatter
-        # TODO: show?
-        self.logo = AnnotationLogo(embedding.labels)
+        logo = AnnotationLogo(emb.labels)
 
-        self._labeler = lambda labels: robust_labels(labels, embedding.robust)
-        self.labels = embedding.labels
-        self.distances = 0  # type: ignore
-        self.colormap = create_colormaps(self.robust_labels.cat.categories)
-
-    def zoom(self, to: Union[None, npt.NDArray] = None):
-        if to is not None:
-            to = to if len(to) > 0 else None
-        for s in self.scatters:
-            s.zoom(to=to)
+        return cls(
+            labels=emb.labels,
+            categorial=categorial,
+            metric=metric,
+            logo=logo,
+            labeler=lambda labels: robust_labels(labels, emb.robust),
+        )
 
     @property
     def labels(self) -> pd.Series:
@@ -159,12 +177,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
     @traitlets.observe("inverted")
     def _update_metric_scatter(self, *args, **kwargs):
         cmap = "viridis_r" if self.inverted else "viridis"
-        self.metric_scatter.color(by=_DISTANCE_COLUMN, map=cmap, norm=[0, 1])
-        self.metric_scatter.legend(True)
+        self.metric.color(by=_DISTANCE_COLUMN, map=cmap, norm=[0, 1])
+        self.metric.legend(True)
 
     def _update_categorial_scatter(self, *args, **kwargs):
-        self.categorial_scatter.legend(False)
-        self.categorial_scatter.color(by=_ROBUST_LABEL_COLUMN, map=self._colormap)
+        self.categorial.legend(False)
+        self.categorial.color(by=_ROBUST_LABEL_COLUMN, map=self._colormap)
 
     @property
     def distances(self) -> pd.Series:
@@ -186,8 +204,8 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     @property
     def scatters(self):
-        yield self.categorial_scatter
-        yield self.metric_scatter
+        yield self.categorial
+        yield self.metric
 
     def show(self, row_height: Union[int, None] = None, **kwargs):
         widgets = []
@@ -200,6 +218,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             widgets.append(widget)
 
         return ipywidgets.VBox(widgets, **kwargs)
+
+    def zoom(self, to: Union[None, npt.NDArray] = None):
+        if to is not None:
+            to = to if len(to) > 0 else None
+        for s in self.scatters:
+            s.zoom(to=to)
 
 
 def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
@@ -226,6 +250,8 @@ def compare(
     # representative label
     markers = [m.name for m in parse_label(a.labels.iloc[0])]
     label_slider, marker_indicator = marker_slider(markers)
+
+    res = b.widgets()
 
     left, right = a.widgets(), b.widgets()
 
@@ -312,10 +338,10 @@ def compare(
 
         return on_change
 
-    left.categorial_scatter.widget.observe(
+    left.categorial.widget.observe(
         handle_selection_change_zoom(left), names="selection"
     )
-    right.categorial_scatter.widget.observe(
+    right.categorial.widget.observe(
         handle_selection_change_zoom(right), names="selection"
     )
 
@@ -324,8 +350,8 @@ def compare(
             left.zoom(to=None)
             right.zoom(to=None)
         else:
-            left.zoom(to=left.categorial_scatter.selection()) 
-            right.zoom(to=right.categorial_scatter.selection())
+            left.zoom(to=left.categorial.selection())
+            right.zoom(to=right.categorial.selection())
 
     zoom.observe(handle_zoom_change, names="value")
 
@@ -344,8 +370,8 @@ def compare(
         unlink()
 
         unlink = link_widgets(
-            (left.categorial_scatter.widget, "selection"),
-            (right.categorial_scatter.widget, "selection"),
+            (left.categorial.widget, "selection"),
+            (right.categorial.widget, "selection"),
         ).unlink
 
     # requires label-label correspondence
@@ -359,18 +385,18 @@ def compare(
 
                 for emb in (left, right):
                     ilocs = np.where(emb.robust_labels.isin(phenotypes))[0]
-                    emb.categorial_scatter.widget.selection = ilocs
+                    emb.categorial.widget.selection = ilocs
 
             return handler
 
         transform_left = expand_phenotype(left)
-        left.categorial_scatter.widget.observe(transform_left, names="selection")
+        left.categorial.widget.observe(transform_left, names="selection")
         transform_right = expand_phenotype(right)
-        right.categorial_scatter.widget.observe(transform_right, names="selection")
+        right.categorial.widget.observe(transform_right, names="selection")
 
         def unlink_all():
-            left.categorial_scatter.unobserve(transform_left, names="selection")
-            right.categorial_scatter.unobserve(transform_right, names="selection")
+            left.categorial.unobserve(transform_left, names="selection")
+            right.categorial.unobserve(transform_right, names="selection")
 
         unlink = unlink_all
 
@@ -442,19 +468,19 @@ def add_ilocs_trait(
 ):
     """Adds a `.ilocs` tuple trait to the final widget which contains the (left, right) selections."""
     initial = (
-        left.categorial_scatter.selection(),
-        right.categorial_scatter.selection(),
+        left.categorial.selection(),
+        right.categorial.selection(),
     )
     widget.add_traits(ilocs=traitlets.Tuple(initial))
 
     ipywidgets.dlink(
-        source=(left.categorial_scatter.widget, "selection"),
+        source=(left.categorial.widget, "selection"),
         target=(widget, "ilocs"),
         transform=lambda iloc: (iloc, widget.ilocs[1]),  # type: ignore
     )
 
     ipywidgets.dlink(
-        source=(right.categorial_scatter.widget, "selection"),
+        source=(right.categorial.widget, "selection"),
         target=(widget, "ilocs"),
         transform=lambda iloc: (widget.ilocs[0], iloc),  # type: ignore
     )

@@ -8,8 +8,8 @@ import pandas as pd
 from matplotlib.colors import Normalize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-from embcomp.test_cases.utils import Covariance2D, dataframe
 from embcomp.metrics import rowise_cosine_similarity
+from embcomp.test_cases.utils import Covariance2D, dataframe
 
 
 @dataframe

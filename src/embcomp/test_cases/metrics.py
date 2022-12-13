@@ -1,4 +1,4 @@
-from typing import Literal, Callable, Union
+from typing import Callable, Literal, Union
 
 import numpy as np
 import pandas as pd
@@ -65,10 +65,12 @@ def kneighbors(X: np.ndarray, k: int) -> np.ndarray:
     return nn.kneighbors(return_distance=False)
 
 
-def fixed_k(df: pd.DataFrame, k: int):
+def fixed_k(df: pd.DataFrame, k: int, knn_indices: Union[None, np.ndarray] = None):
     _validate_df(df)
 
-    knn_indices = kneighbors(df[["x", "y"]].values, k=k)
+    if knn_indices is None:
+        knn_indices = kneighbors(df[["x", "y"]].values, k=k)
+
     counts = count_neighbor_labels(knn_indices, df.label)
     index = pd.Series(df.label, name="label", dtype="category")
 
@@ -109,19 +111,22 @@ def count_first(
     n: int = 0,
     agg: Literal["set", "sum"] = "set",
     type: Literal["incoming", "outgoing", "both"] = "incoming",
+    knn_indices: Union[np.ndarray, None] = None,
 ):
     _validate_df(df)
 
-    largest_category_size = min(
-        500,
-        df.label.value_counts(sort=True)[0],
-    )
+    if knn_indices is None:
+        largest_category_size = min(
+            500,
+            df.label.value_counts(sort=True)[0],
+        )
 
-    # only compute the complete neighborhood graph up until the largest class size
-    knn_indices = kneighbors(
-        X=df[["x", "y"]].values,
-        k=largest_category_size + n + 1,
-    )
+        # only compute the complete neighborhood graph up until the largest class size
+        knn_indices = kneighbors(
+            X=df[["x", "y"]].values,
+            k=largest_category_size + n + 1,
+        )
+
     knn_identities = df.label.values[knn_indices]
 
     indices_bags = {}
