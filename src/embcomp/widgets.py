@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import traitlets
-import traittypes
+from traittypes import traittypes
 
 import embcomp.metrics as metrics
 from embcomp._widget_utils import link_widgets
@@ -178,13 +178,22 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self._colormap = cmap
         self._update_categorial_scatter()
 
-    def show(self):
-        return ipywidgets.VBox(
-            [
-                self.categorial_scatter.show(),
-                self.metric_scatter.show(),
-            ]
-        )
+    @property
+    def scatters(self):
+        yield self.categorial_scatter
+        yield self.metric_scatter
+
+    def show(self, row_height: Union[int, None] = None, **kwargs):
+        widgets = []
+
+        for scatter in self.scatters:
+            if row_height is not None:
+                scatter.height(row_height)
+            widget = scatter.show()
+            widget.layout = {"margin": "0 0 2px 0"}
+            widgets.append(widget)
+
+        return ipywidgets.VBox(widgets, **kwargs)
 
 
 def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
@@ -376,25 +385,42 @@ def compare(
         ]
     )
 
-    for s in [
-        left.categorial_scatter,
-        left.metric_scatter,
-        right.categorial_scatter,
-        right.metric_scatter,
-    ]:
-        s.height(row_height)
-
-    main = ipywidgets.GridBox(
-        children=[left.show(), right.show()],
-        layout=ipywidgets.Layout(
-            grid_template_columns="1fr 1fr",
-            grid_template_rows=f"{row_height * 2}px",
-        ),
+    main = ipywidgets.HBox(
+        [
+            cmp.show(row_height=row_height, layout=ipywidgets.Layout(width="50%"))
+            for cmp in (left, right)
+        ]
     )
 
     # initialize
     label_slider.value = 1
     left.distances, right.distances = metric.value()
     widget = ipywidgets.VBox([header, main])
+    add_ilocs_trait(widget, left, right)
 
     return widget
+
+
+def add_ilocs_trait(
+    widget: traitlets.HasTraits,
+    right: EmbeddingWidgetCollection,
+    left: EmbeddingWidgetCollection,
+):
+    """Adds a `.ilocs` tuple trait to the final widget which contains the (left, right) selections."""
+    initial = (
+        left.categorial_scatter.selection(),
+        right.categorial_scatter.selection(),
+    )
+    widget.add_traits(ilocs=traitlets.Tuple(initial))
+
+    ipywidgets.dlink(
+        source=(left.categorial_scatter.widget, "selection"),
+        target=(widget, "ilocs"),
+        transform=lambda iloc: (iloc, widget.ilocs[1]),  # type: ignore
+    )
+
+    ipywidgets.dlink(
+        source=(right.categorial_scatter.widget, "selection"),
+        target=(widget, "ilocs"),
+        transform=lambda iloc: (widget.ilocs[0], iloc),  # type: ignore
+    )

@@ -9,20 +9,24 @@ maintainers = [
     { name = "Fritz Lekschas" },
 ]
 requires-python = ">=3.9"
-dependencies = ["pandas", "umap-learn"]
+dependencies = [
+    "ipywidgets>=8.0.0",
+    "jinja2",
+    "jupyter-scatter>=0.9.0",
+    "matplotlib",
+    "numba>=0.56.4",
+    "pandas",
+    "traittypes",
+    "umap-learn",
+    "scipy",
+]
 dynamic = ["version"]
 classifiers = [
-    'Intended Audience :: Developers',
-    'Programming Language :: Python :: 3',
-    'Programming Language :: Python :: 3.9',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
-]
-
-[project.optional-dependencies]
-jupyter = [
-    'notebook',
-    'ipywidgets>=8.0.0',
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
 
 [project.urls]
@@ -35,7 +39,6 @@ where = ["src"]
 version_scheme = "guess-next-dev"
 local_scheme = "dirty-tag"
 write_to = "src/embcomp/_version.py"
-
 
 [tool.mypy]
 python_version = "3.9"
