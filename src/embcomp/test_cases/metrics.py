@@ -79,7 +79,7 @@ def fixed_k(df: pd.DataFrame, k: int):
 
 def dynamic_k(
     df: pd.DataFrame,
-    compute_k: Callable[[int], int] = lambda size: int(np.ceil(np.log2(size))),
+    compute_k: Callable[[int], int] = lambda size: int(np.ceil(np.log2(size + 1))),
     kind: Literal["set", "sum"] = "set",
     knn_indices: Union[np.ndarray, None] = None,
 ):
