@@ -21,17 +21,24 @@ def process_bags(
     type: Literal["incoming", "outgoing", "both"],
     agg: Literal["set", "sum"],
 ):
+    """Process an outgoing "bag" of indices.
+
+    `outgoing` is a 2D array containing positive indices into
+    the labels series. Negative indices (e.g., -1) are filtered
+    and ignored from final outcoming/incoming.
+    """
     categories = labels.cat.categories
-    outgoing_bags = {
-        label: outgoing[labels.values == label].ravel() for label in categories
-    }
+    outgoing_bags = {}
+    for label in categories:
+        indices = outgoing[labels.values == label].ravel()
+        outgoing_bags[label] = indices[indices > 0]
 
     if type == "outgoing":
         bags = outgoing_bags
     else:
         incoming_bags = {}  # dict[str, 1D array of indices]
         outgoing_identities = np.where(
-            outgoing == -1, "__NONE__", labels.values[outgoing]
+            outgoing < 0, "__ignored_label", labels.values[outgoing]
         )
         for label in categories:
             # find all points (rows) where one of the outgoing neighbors is `label`.
