@@ -81,7 +81,7 @@ def fixed_k(df: pd.DataFrame, k: int, knn_indices: Union[None, np.ndarray] = Non
 
 def dynamic_k(
     df: pd.DataFrame,
-    compute_k: Callable[[int], int] = lambda size: int(np.ceil(np.log2(size + 1))),
+    compute_k: Callable[[int], int] = lambda size: int(np.ceil(np.log2(size))),
     kind: Literal["set", "sum"] = "set",
     knn_indices: Union[np.ndarray, None] = None,
 ):
@@ -98,8 +98,7 @@ def dynamic_k(
     indices_bags = {}
     for label in df.label.cat.categories:
         k = compute_k(sizes.loc[label])
-        label_knn_indices = knn_indices[df.label.values == label, 0:k]
-        indices_bags[label] = label_knn_indices.ravel()
+        indices_bags[label] = knn_indices[df.label.values == label, 0:k]
 
     return process_bags(
         labels=df.label, indices_bags=indices_bags, type="outgoing", agg=kind
