@@ -1,4 +1,5 @@
 import dataclasses
+import functools
 import itertools
 from typing import Callable, Iterable, Union, overload
 
@@ -10,9 +11,16 @@ import pandas as pd
 import traitlets
 
 import embcomp.metrics as metrics
-from embcomp._widget_utils import link_widgets
-from embcomp.logo import AnnotationLogo, marker_slider, parse_label, trim_label_series
-from embcomp.test_cases.metrics import count_first, dynamic_k, kneighbors
+from embcomp._widget_utils import diverging_cmap, link_widgets
+from embcomp.logo import AnnotationLogo, MarkerIndicator, parse_label, trim_label_series
+from embcomp.test_cases.metrics import (
+    centered_logratio,
+    count_first,
+    dynamic_k,
+    kneighbors,
+    merge_abundances_left,
+    transform_abundance,
+)
 
 Coordinates = npt.ArrayLike
 KnnIndices = npt.NDArray[np.int_]
@@ -163,6 +171,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self.metric_scatter = metric_scatter
         self.logo = logo
         self._labeler = labeler
+        self.metric_color_options = (
+            "viridis",
+            "viridis_r",
+            [0, 1],
+            ("min", "max", "value"),
+        )
 
         self.labels = labels
         self.distances = 0  # type: ignore
@@ -194,6 +208,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
                 background_color=background_color,
                 axes=axes,
                 opacity_unselected=opacity_unselected,
+                lasso_initiator=False,
                 **kwargs,
             )
             for _ in range(2)
@@ -232,8 +247,13 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     @traitlets.observe("inverted")
     def _update_metric_scatter(self, *args, **kwargs):
-        cmap = "viridis_r" if self.inverted else "viridis"
-        self.metric_scatter.color(by=_DISTANCE_COLUMN, map=cmap, norm=[0, 1])
+        cmap, cmapr, norm, labeling = self.metric_color_options
+        self.metric_scatter.color(
+            by=_DISTANCE_COLUMN,
+            map=cmapr if self.inverted else cmap,
+            norm=norm,
+            labeling=labeling,
+        )
         self.metric_scatter.legend(True)
 
     def _update_categorial_scatter(self, *args, **kwargs):
@@ -306,7 +326,7 @@ def compare(
 
     # representative label
     markers = [m.name for m in parse_label(a.labels.iloc[0])]
-    label_slider, marker_indicator = marker_slider(markers)
+    marker_level = MarkerIndicator(markers=markers, value=len(markers))
 
     left, right = a.widgets(**kwargs), b.widgets(**kwargs)
 
@@ -320,10 +340,13 @@ def compare(
 
         return _confusion(left, a.knn_indices), _confusion(right, b.knn_indices)
 
-    # TODO: dynamic_k_not_first_myself
+    def _count_first():
+        ma = count_first(left._data, type="both", agg="set", knn_indices=a.knn_indices)
+        mb = count_first(right._data, type="both", agg="set", knn_indices=b.knn_indices)
+        return ma, mb
+
     def neighborhood():
-        ma = count_first(left._data, type="both", knn_indices=a.knn_indices)
-        mb = count_first(right._data, type="both", knn_indices=b.knn_indices)
+        ma, mb = _count_first()
         overlap = ma.index.intersection(mb.index)
         dist = {label: 0 for label in ma.index.union(mb.index)}
         sim = metrics.rowise_cosine_similarity(
@@ -332,15 +355,28 @@ def compare(
         dist.update(sim)
         return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
-    # TODO: need to merge abundance stuff first
     def abundance():
-        ...
+        counts = _count_first()
+        abundances = [
+            transform_abundance(rep, abundances=emb.labels.value_counts().to_dict())
+            for rep, emb in zip(counts, (left, right))
+        ]
+        merged = [
+            merge_abundances_left(abundances[0], abundances[1]),
+            merge_abundances_left(abundances[1], abundances[0]),
+        ]
+        label_dista, label_distb = [centered_logratio(ab) for ab in merged]
+        return (
+            left.labels.map(label_dista - label_distb).astype(float),
+            right.labels.map(label_distb - label_dista).astype(float),
+        )
 
     # METRIC START
 
     metric_options: list[tuple[str, Callable]] = [
         ("confusion", confusion),
         ("neighborhood", neighborhood),
+        ("abundance", abundance),
     ]
 
     metric = ipywidgets.Dropdown(
@@ -349,10 +385,40 @@ def compare(
         description="metric: ",
     )
 
-    def on_metric_change(change):
-        left.distances, right.distances = change.new()
+    def update_distances():
+        distances = metric.value()
+        for dist, emb in zip(distances, (left, right)):
+            if metric.value == abundance:
+                vmax = max(abs(dist.min()), abs(dist.max()), 3)
+                emb.metric_color_options = (
+                    diverging_cmap[::-1],
+                    diverging_cmap,
+                    [-vmax, vmax],
+                    ("low", "high", "abundance"),
+                )
+            elif metric.value == confusion:
+                emb.metric_color_options = (
+                    "viridis",
+                    "viridis_r",
+                    [0, 1],
+                    ("least", "most", "confusion"),
+                )
 
-    metric.observe(on_metric_change, names="value")
+            elif metric.value == neighborhood:
+                emb.metric_color_options = (
+                    "viridis",
+                    "viridis_r",
+                    [0, 1],
+                    ("least", "most", "similarity"),
+                )
+            else:
+                raise ValueError(
+                    f"jscatter color options not specified for metric, {metric.value.__name__}"
+                )
+
+            emb.distances = dist
+
+    metric.observe(lambda _change: update_distances(), names="value")
     # METRIC END
 
     # COLOR START
@@ -420,6 +486,7 @@ def compare(
                 for emb in (left, right):
                     ilocs = np.where(emb.robust_labels.isin(phenotypes))[0]
                     emb.categorial_scatter.widget.selection = ilocs
+                    emb.metric_scatter.widget.selection = ilocs
 
             return handler
 
@@ -467,17 +534,15 @@ def compare(
             left.robust_labels.cat.categories,
             right.robust_labels.cat.categories,
         )
-        left.distances, right.distances = metric.value()
+        update_distances()
 
-    label_slider.observe(on_label_level_change, names="value")
+    marker_level.observe(on_label_level_change, names="value")
     # LABELS END
 
     header = ipywidgets.VBox(
         [
-            marker_indicator,
-            ipywidgets.HBox(
-                [label_slider, selection_type, metric, inverted, zoom],
-            ),
+            marker_level,
+            ipywidgets.HBox([selection_type, metric, inverted, zoom]),
         ]
     )
 
@@ -489,11 +554,15 @@ def compare(
     )
 
     # initialize
-    label_slider.value = 1
-    left.distances, right.distances = metric.value()
     widget = ipywidgets.VBox([header, main])
     add_ilocs_trait(widget, left, right)
 
+    widget.left = left
+    widget.right = right
+    widget.metric = metric
+    widget.count_first = _count_first
+
+    marker_level.value = 1  # set the lowest marker_level
     return widget
 
 
