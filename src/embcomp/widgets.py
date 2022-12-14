@@ -381,7 +381,7 @@ def compare(
 
     metric = ipywidgets.Dropdown(
         options=metric_options,
-        value=abundance,
+        value=confusion,
         description="metric: ",
     )
 
