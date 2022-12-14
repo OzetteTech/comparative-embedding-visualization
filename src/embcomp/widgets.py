@@ -176,7 +176,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self.metric_scatter = metric_scatter
         self.logo = logo
         self._labeler = labeler
-        self.metric_color_options = ("viridis", "viridis_r", [0, 1])
+        self.metric_color_options = ("viridis", "viridis_r", [0, 1], ("min", "max", "value"))
 
         self.labels = labels
         self.distances = 0  # type: ignore
@@ -247,9 +247,9 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     @traitlets.observe("inverted")
     def _update_metric_scatter(self, *args, **kwargs):
-        cmap, cmapr, norm = self.metric_color_options
+        cmap, cmapr, norm, labeling = self.metric_color_options
         self.metric_scatter.color(
-            by=_DISTANCE_COLUMN, map=cmapr if self.inverted else cmap, norm=norm
+            by=_DISTANCE_COLUMN, map=cmapr if self.inverted else cmap, norm=norm, labeling=labeling,
         )
         self.metric_scatter.legend(True)
 
@@ -405,9 +405,16 @@ def compare(
                     diverging_cmap[::-1],
                     diverging_cmap,
                     [-vmax, vmax],
+                    ("low", "high", "abundance")
                 )
+            elif metric.value == confusion:
+                emb.metric_color_options = ("viridis", "viridis_r", [0, 1], ("least", "most", "confusion"))
+
+            elif metric.value == neighborhood:
+                emb.metric_color_options = ("viridis", "viridis_r", [0, 1], ("least", "most", "similarity"))
             else:
-                emb.metric_color_options = ("viridis", "viridis_r", [0, 1])
+                raise ValueError(f"jscatter color options not specified for metric, {metric.value.__name__}")
+
             emb.distances = dist
 
     metric.observe(lambda _change: update_distances(), names="value")
