@@ -105,13 +105,6 @@ def dynamic_k(
         labels=df.label, indices_bags=indices_bags, type="outgoing", agg=kind
     )
 
-def sampling_first_other(
-    df: pd.DataFrame,
-    type: Literal["incoming", "outgoing", "both"] = "outgoing",
-    iters: int = 100,
-):
-
-
 
 def count_first(
     df: pd.DataFrame,

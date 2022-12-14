@@ -4,6 +4,7 @@ import re
 import uuid
 from typing import Literal
 
+import anywidget
 import IPython.display
 import ipywidgets
 import jinja2
@@ -11,7 +12,6 @@ import numpy as np
 import pandas as pd
 import traitlets
 import traittypes
-import anywidget
 
 from embcomp._widget_utils import link_widgets
 
