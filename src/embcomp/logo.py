@@ -284,7 +284,7 @@ export async function render(view) {
     if (diff > 0) {
       for (let i = 0; i < diff; i++) {
         let button = document.createElement("button");
-        Object.assign(div.style, {
+        Object.assign(button.style, {
           // padding: "3px 3px",
           // borderRight: "1px solid",
           // borderTop: "1px solid",

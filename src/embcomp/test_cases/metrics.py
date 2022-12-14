@@ -28,20 +28,11 @@ def process_bags(
     if type == "outgoing":
         bags = outgoing
     else:
-        # incoming or both
         incoming = {}
-        for label in indices_bags:
-            bag = []
-            for other, out_inds in indices_bags.items():
-                in_inds = np.where(labels == other)[0]
-
-                if label == other:
-                    continue
-
-                mask = np.any(labels.to_numpy()[out_inds] == label, axis=1)
-                bag.append(in_inds[mask])
-            incoming[label] = np.concatenate(bag)
-
+        for label in outgoing:
+            others = np.concatenate([v for k, v in outgoing.items() if k != label])
+            matches = labels.iloc[others] == label
+            incoming[label] = matches.index.to_numpy()
         if type == "incoming":
             bags = incoming
         else:

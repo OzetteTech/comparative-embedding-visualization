@@ -330,8 +330,6 @@ def compare(
 
     left, right = a.widgets(**kwargs), b.widgets(**kwargs)
 
-    # TODO: fixme! a hack to cache pre-computed results
-    @functools.cache
     def confusion(_level: int):
         def _confusion(emb: EmbeddingWidgetCollection, knn_indices: KnnIndices):
             res = dynamic_k(emb._data, knn_indices=knn_indices)
@@ -342,20 +340,11 @@ def compare(
 
         return _confusion(left, a.knn_indices), _confusion(right, b.knn_indices)
 
-    # TODO: fixme! a hack to cache pre-computed results
-    @functools.cache
     def _count_first(_level: int):
-        # TODO: Both is really slow...
-        ma = count_first(
-            left._data, type="outgoing", agg="set", knn_indices=a.knn_indices
-        )
-        mb = count_first(
-            right._data, type="outgoing", agg="set", knn_indices=b.knn_indices
-        )
+        ma = count_first(left._data, type="both", agg="set", knn_indices=a.knn_indices)
+        mb = count_first(right._data, type="both", agg="set", knn_indices=b.knn_indices)
         return ma, mb
 
-    # TODO: fixme! a hack to cache pre-computed results
-    @functools.cache
     def neighborhood(level: int):
         ma, mb = _count_first(level)
         overlap = ma.index.intersection(mb.index)
@@ -366,12 +355,11 @@ def compare(
         dist.update(sim)
         return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
-    # TODO: fixme! a hack to cache pre-computed results
-    @functools.cache
     def abundance(level: int):
+        counts = _count_first(level)
         abundances = [
             transform_abundance(rep, abundances=emb.labels.value_counts().to_dict())
-            for rep, emb in zip(_count_first(level), (left, right))
+            for rep, emb in zip(counts, (left, right))
         ]
         merged = [
             merge_abundances_left(abundances[0], abundances[1]),
@@ -393,7 +381,7 @@ def compare(
 
     metric = ipywidgets.Dropdown(
         options=metric_options,
-        value=confusion,
+        value=abundance,
         description="metric: ",
     )
 
@@ -566,8 +554,6 @@ def compare(
     )
 
     # initialize
-    marker_level.value = 1
-    update_distances()
     widget = ipywidgets.VBox([header, main])
     add_ilocs_trait(widget, left, right)
 
@@ -576,6 +562,8 @@ def compare(
     widget.metric = metric
     widget.count_first = _count_first
 
+    marker_level.value = 1
+    update_distances()
     return widget
 
 
