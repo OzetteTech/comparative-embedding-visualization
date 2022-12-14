@@ -2,9 +2,8 @@ from typing import Callable, Literal, Union
 
 import numpy as np
 import pandas as pd
-from sklearn.neighbors import NearestNeighbors
 import scipy.stats.mstats
-
+from sklearn.neighbors import NearestNeighbors
 
 from embcomp.metrics import count_neighbor_labels
 
@@ -153,7 +152,7 @@ def count_first(
 def transform_abundance(
     label_representation: pd.DataFrame,
     abundances: dict[str, int],
-    force_include_self: bool = False,
+    force_include_self: bool = True,
 ):
     """
     Creates an abundance-based representation.
@@ -169,8 +168,7 @@ def transform_abundance(
     force_include_self: force include self abundance even if missing from lable-level representaion.
     """
     assert (
-        label_representation.index.values.to_list()
-        == label_representation.columns.to_list()
+        label_representation.index.to_list() == label_representation.columns.to_list()
     ), "must be a symmetric DataFrame with shared rows/cols"
 
     mask = label_representation.to_numpy() > 0
@@ -200,7 +198,7 @@ def merge_abundances_left(left: pd.DataFrame, right: pd.DataFrame):
     missing = list(set(index).difference(left.index))
     merged.loc[missing, right.columns] = right.loc[missing, right.columns]
     # make sure to zero out diagonal for right-copied rows
-    merged.loc[missing, missing] = 0
+    merged.loc[missing, missing] = 1
     return merged
 
 
@@ -218,9 +216,10 @@ def centered_logratio(abundance_representation: pd.DataFrame):
         value = row[i]
         values = row[np.nonzero(row)]
         gmean = scipy.stats.mstats.gmean(values)
-        ratio = np.log(value) / np.log(gmean)
-        print(f"{value=} {values=} {gmean=}, {np.log(value)=} {np.log(gmean)=} {ratio=}")
+        ratio = np.log(value / gmean)
         return ratio
 
-    return np.array([_compute(row, i) for i, row in enumerate(copy)])
-
+    return pd.Series(
+        [_compute(row, i) for i, row in enumerate(copy)],
+        index=abundance_representation.index,
+    )

@@ -1,7 +1,9 @@
 import dataclasses
+import functools
 import itertools
 from typing import Callable, Iterable, Union, overload
 
+import cmasher as cmr
 import ipywidgets
 import jscatter
 import numpy as np
@@ -12,7 +14,14 @@ import traitlets
 import embcomp.metrics as metrics
 from embcomp._widget_utils import link_widgets
 from embcomp.logo import AnnotationLogo, marker_slider, parse_label, trim_label_series
-from embcomp.test_cases.metrics import count_first, dynamic_k, kneighbors
+from embcomp.test_cases.metrics import (
+    centered_logratio,
+    count_first,
+    dynamic_k,
+    kneighbors,
+    merge_abundances_left,
+    transform_abundance,
+)
 
 Coordinates = npt.ArrayLike
 KnnIndices = npt.NDArray[np.int_]
@@ -163,6 +172,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self.metric_scatter = metric_scatter
         self.logo = logo
         self._labeler = labeler
+        self.metric_color_options = ("viridis", "viridis_r", [0, 1])
 
         self.labels = labels
         self.distances = 0  # type: ignore
@@ -232,8 +242,10 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     @traitlets.observe("inverted")
     def _update_metric_scatter(self, *args, **kwargs):
-        cmap = "viridis_r" if self.inverted else "viridis"
-        self.metric_scatter.color(by=_DISTANCE_COLUMN, map=cmap, norm=[0, 1])
+        cmap, cmapr, norm = self.metric_color_options
+        self.metric_scatter.color(
+            by=_DISTANCE_COLUMN, map=cmapr if self.inverted else cmap, norm=norm
+        )
         self.metric_scatter.legend(True)
 
     def _update_categorial_scatter(self, *args, **kwargs):
@@ -310,7 +322,9 @@ def compare(
 
     left, right = a.widgets(**kwargs), b.widgets(**kwargs)
 
-    def confusion():
+    # TODO: fixme! a hack to cache pre-computed results
+    @functools.cache
+    def confusion(_level: int):
         def _confusion(emb: EmbeddingWidgetCollection, knn_indices: KnnIndices):
             res = dynamic_k(emb._data, knn_indices=knn_indices)
             label_confusion = 1 - metrics.rowise_cosine_similarity(
@@ -320,10 +334,22 @@ def compare(
 
         return _confusion(left, a.knn_indices), _confusion(right, b.knn_indices)
 
-    # TODO: dynamic_k_not_first_myself
-    def neighborhood():
-        ma = count_first(left._data, type="both", knn_indices=a.knn_indices)
-        mb = count_first(right._data, type="both", knn_indices=b.knn_indices)
+    # TODO: fixme! a hack to cache pre-computed results
+    @functools.cache
+    def _count_first(_level: int):
+        # TODO: Both is really slow...
+        ma = count_first(
+            left._data, type="outgoing", agg="set", knn_indices=a.knn_indices
+        )
+        mb = count_first(
+            right._data, type="outgoing", agg="set", knn_indices=b.knn_indices
+        )
+        return ma, mb
+
+    # TODO: fixme! a hack to cache pre-computed results
+    @functools.cache
+    def neighborhood(level: int):
+        ma, mb = _count_first(level)
         overlap = ma.index.intersection(mb.index)
         dist = {label: 0 for label in ma.index.union(mb.index)}
         sim = metrics.rowise_cosine_similarity(
@@ -332,15 +358,31 @@ def compare(
         dist.update(sim)
         return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
-    # TODO: need to merge abundance stuff first
-    def abundance():
-        ...
+    # TODO: fixme! a hack to cache pre-computed results
+    @functools.cache
+    def abundance(level: int):
+        abundances = [
+            transform_abundance(rep, abundances=emb.labels.value_counts().to_dict())
+            for rep, emb in zip(_count_first(level), (left, right))
+        ]
+        label_dista, label_distb = [
+            centered_logratio(ab)
+            for ab in [
+                merge_abundances_left(abundances[0], abundances[1]),
+                merge_abundances_left(abundances[1], abundances[0]),
+            ]
+        ]
+        return (
+            left.labels.map(label_dista - label_distb).astype(float),
+            right.labels.map(label_distb - label_dista).astype(float),
+        )
 
     # METRIC START
 
-    metric_options: list[tuple[str, Callable]] = [
+    metric_options: list[tuple[str, Callable[[int], tuple]]] = [
         ("confusion", confusion),
         ("neighborhood", neighborhood),
+        ("abundance", abundance),
     ]
 
     metric = ipywidgets.Dropdown(
@@ -349,10 +391,21 @@ def compare(
         description="metric: ",
     )
 
-    def on_metric_change(change):
-        left.distances, right.distances = change.new()
+    def update_distances():
+        distances = metric.value(label_slider.value)
+        for dist, emb in zip(distances, (left, right)):
+            if metric.value == abundance:
+                vmax = max(abs(dist.min()), abs(dist.max()), 3)
+                emb.metric_color_options = (
+                    cmr.iceburn.colors[::-1],
+                    cmr.iceburn.colors,
+                    [-vmax, vmax],
+                )
+            else:
+                emb.metric_color_options = ("viridis", "viridis_r", [0, 1])
+            emb.distances = dist
 
-    metric.observe(on_metric_change, names="value")
+    metric.observe(lambda _change: update_distances(), names="value")
     # METRIC END
 
     # COLOR START
@@ -467,7 +520,7 @@ def compare(
             left.robust_labels.cat.categories,
             right.robust_labels.cat.categories,
         )
-        left.distances, right.distances = metric.value()
+        update_distances()
 
     label_slider.observe(on_label_level_change, names="value")
     # LABELS END
@@ -490,9 +543,12 @@ def compare(
 
     # initialize
     label_slider.value = 1
-    left.distances, right.distances = metric.value()
+    update_distances()
     widget = ipywidgets.VBox([header, main])
     add_ilocs_trait(widget, left, right)
+
+    widget.left = left
+    widget.right = right
 
     return widget
 
