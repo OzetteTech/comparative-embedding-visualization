@@ -8,11 +8,11 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import traitlets
-from traittypes import traittypes
 
 import embcomp.metrics as metrics
 from embcomp._widget_utils import link_widgets
 from embcomp.logo import AnnotationLogo, marker_slider, parse_label, trim_label_series
+from embcomp.test_cases.metrics import count_first, dynamic_k, kneighbors
 
 Coordinates = npt.ArrayLike
 KnnIndices = npt.NDArray[np.int_]
@@ -77,7 +77,13 @@ class Embedding:
     robust: Union[npt.NDArray[np.bool_], None] = None
 
     @classmethod
-    def from_df(cls, df: pd.DataFrame, knn_indices: KnnIndices):
+    def from_df(cls, df: pd.DataFrame, knn_indices: Union[None, KnnIndices] = None):
+        if knn_indices is None:
+            largest_category_size = min(
+                500,
+                df.label.value_counts(sort=True)[0],
+            )
+            knn_indices = kneighbors(df[["x", "y"]].to_numpy(), k=largest_category_size)
         return cls(
             coords=df[["x", "y"]].values,
             knn_indices=knn_indices,
@@ -85,13 +91,61 @@ class Embedding:
             robust=df["robust"] if "robust" in df else None,
         )
 
+    @classmethod
+    def from_ozette(
+        cls,
+        df: pd.DataFrame,
+        robust_only: bool = True,
+        knn_indices: Union[None, KnnIndices] = None,
+    ):
+
+        # ISMB data
+        if "cellType" in df.columns:
+            robust = (df["cellType"] != NON_ROBUST_LABEL).to_numpy()
+            if robust_only:
+                df = df[robust].reset_index(drop=True)
+                robust = None
+
+            coords = df[["x", "y"]].to_numpy()
+            labels = df["complete_faust_label"].to_numpy()
+
+        else:
+            robust = (df["faustLabels"] != NON_ROBUST_LABEL).to_numpy()
+            representative_label = df["faustLabels"][robust].iloc[0]
+
+            if robust_only:
+                df = df[robust].reset_index(drop=True)
+                coords = df[["umapX", "umapY"]].to_numpy()
+                labels = df["faustLabels"].to_numpy()
+                robust = None
+            else:
+                coords = df[["umapX", "umapY"]].to_numpy()
+                df = df[["faustLabels"]]
+                df["label"] = ""
+                for marker in parse_label(representative_label):
+                    marker_annoation = (
+                        marker.name + df[f"{marker.name}_faust_annotation"]
+                    )
+                    df["label"] += marker_annoation
+                labels = df["label"].to_numpy()
+
+        labels = pd.Series(labels, dtype="category")
+        if knn_indices is None:
+            largest_category_size = min(
+                500,
+                labels.value_counts(sort=True)[0],
+            )
+            knn_indices = kneighbors(coords, k=largest_category_size)
+
+        return cls(coords=coords, labels=labels, robust=robust, knn_indices=knn_indices)
+
     def widgets(self, **kwargs):
-        return EmbeddingWidgetCollection(self, **kwargs)
+        return EmbeddingWidgetCollection.from_embedding(self, **kwargs)
 
 
-_LABEL_COLUMN = "_label"
-_ROBUST_LABEL_COLUMN = "_robust_label"
-_DISTANCE_COLUMN = "_distance"
+_LABEL_COLUMN = "label"
+_ROBUST_LABEL_COLUMN = "robust_label"
+_DISTANCE_COLUMN = "distance"
 
 
 class EmbeddingWidgetCollection(traitlets.HasTraits):
@@ -99,18 +153,42 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     def __init__(
         self,
-        embedding: Embedding,
+        labels: pd.Series,
+        categorial_scatter: jscatter.Scatter,
+        metric_scatter: jscatter.Scatter,
+        logo: AnnotationLogo,
+        labeler: Callable[[npt.ArrayLike], pd.Series],
+    ):
+        self.categorial_scatter = categorial_scatter
+        self.metric_scatter = metric_scatter
+        self.logo = logo
+        self._labeler = labeler
+
+        self.labels = labels
+        self.distances = 0  # type: ignore
+        self.colormap = create_colormaps(self.robust_labels.cat.categories)
+
+    @property
+    def _data(self) -> pd.DataFrame:
+        assert self.categorial_scatter._data is self.metric_scatter._data
+        assert self.categorial_scatter._data is not None
+        return self.categorial_scatter._data
+
+    @classmethod
+    def from_embedding(
+        cls,
+        emb: Embedding,
         background_color: str = "black",
         axes: bool = False,
         opacity_unselected: float = 0.05,
         **kwargs,
     ):
-        X = np.array(embedding.coords)
-        self._data = pd.DataFrame({"x": X[:, 0], "y": X[:, 1]})
+        X = np.array(emb.coords)
+        data = pd.DataFrame({"x": X[:, 0], "y": X[:, 1]})
 
         categorial_scatter, metric_scatter = (
             jscatter.Scatter(
-                data=self._data,
+                data=data,
                 x="x",
                 y="y",
                 background_color=background_color,
@@ -126,21 +204,15 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             (metric_scatter.widget, "selection"),
         )
 
-        self.categorial_scatter = categorial_scatter
-        self.metric_scatter = metric_scatter
-        # TODO: show?
-        self.logo = AnnotationLogo(embedding.labels)
+        logo = AnnotationLogo(emb.labels)
 
-        self._labeler = lambda labels: robust_labels(labels, embedding.robust)
-        self.labels = embedding.labels
-        self.distances = 0  # type: ignore
-        self.colormap = create_colormaps(self.robust_labels.cat.categories)
-
-    def zoom(self, to: Union[None, npt.NDArray] = None):
-        if to is not None:
-            to = to if len(to) > 0 else None
-        for s in self.scatters:
-            s.zoom(to=to)
+        return cls(
+            labels=emb.labels,
+            categorial_scatter=categorial_scatter,
+            metric_scatter=metric_scatter,
+            logo=logo,
+            labeler=lambda labels: robust_labels(labels, emb.robust),
+        )
 
     @property
     def labels(self) -> pd.Series:
@@ -153,8 +225,10 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
     @labels.setter
     def labels(self, labels: npt.ArrayLike):
         self.logo.labels = labels
-        self._data[_LABEL_COLUMN] = labels
-        self._data[_ROBUST_LABEL_COLUMN] = self._labeler(labels)
+        self._data[_LABEL_COLUMN] = pd.Series(np.asarray(labels), dtype="category")
+        self._data[_ROBUST_LABEL_COLUMN] = pd.Series(
+            np.asarray(self._labeler(labels)), dtype="category"
+        )
 
     @traitlets.observe("inverted")
     def _update_metric_scatter(self, *args, **kwargs):
@@ -201,6 +275,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
         return ipywidgets.VBox(widgets, **kwargs)
 
+    def zoom(self, to: Union[None, npt.NDArray] = None):
+        if to is not None:
+            to = to if len(to) > 0 else None
+        for s in self.scatters:
+            s.zoom(to=to)
+
 
 def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
     return np.array_equal(a.labels, b.labels) and (
@@ -217,6 +297,7 @@ def compare(
     a: Union[tuple[pd.DataFrame, KnnIndices], Embedding],
     b: Union[tuple[pd.DataFrame, KnnIndices], Embedding],
     row_height: int = 250,
+    **kwargs,
 ):
     a = Embedding.from_df(a[0], a[1]) if isinstance(a, tuple) else a
     b = Embedding.from_df(b[0], b[1]) if isinstance(b, tuple) else b
@@ -227,65 +308,44 @@ def compare(
     markers = [m.name for m in parse_label(a.labels.iloc[0])]
     label_slider, marker_indicator = marker_slider(markers)
 
-    left, right = a.widgets(), b.widgets()
+    left, right = a.widgets(**kwargs), b.widgets(**kwargs)
 
-    def counts():
-        alabels = pd.Series(left.logo.labels, dtype="category", name="label")
-        acounts = metrics.count_neighbor_labels(a.knn_indices, alabels)
-        blabels = pd.Series(right.logo.labels, dtype="category", name="label")
-        bcounts = metrics.count_neighbor_labels(b.knn_indices, blabels)
-        return (
-            pd.DataFrame(acounts, index=alabels),
-            pd.DataFrame(bcounts, index=blabels),
+    def confusion():
+        def _confusion(emb: EmbeddingWidgetCollection, knn_indices: KnnIndices):
+            res = dynamic_k(emb._data, knn_indices=knn_indices)
+            label_confusion = 1 - metrics.rowise_cosine_similarity(
+                res, np.eye(len(res))
+            )
+            return emb.labels.map(label_confusion).astype(float)
+
+        return _confusion(left, a.knn_indices), _confusion(right, b.knn_indices)
+
+    # TODO: dynamic_k_not_first_myself
+    def neighborhood():
+        ma = count_first(left._data, type="both", knn_indices=a.knn_indices)
+        mb = count_first(right._data, type="both", knn_indices=b.knn_indices)
+        overlap = ma.index.intersection(mb.index)
+        dist = {label: 0 for label in ma.index.union(mb.index)}
+        sim = metrics.rowise_cosine_similarity(
+            ma.loc[overlap, overlap], mb.loc[overlap, overlap]
         )
+        dist.update(sim)
+        return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
-    # def point_label():
-    #     acounts, bcounts = counts()
-    #     distances = metrics.rowise_cosine_similarity(acounts.values, bcounts.values)
-    #     return distances, distances
-
-    def label_counts():
-        acounts, bcounts = counts()
-        a = acounts.groupby("label").sum()
-        a.columns = a.index
-        b = bcounts.groupby("label").sum()
-        b.columns = b.index
-        return (a, acounts.index), (b, bcounts.index)
-
-    def label_label():
-        a, b = label_counts()
-
-        # np.fill_diagonal(a.values, 0)
-        # np.fill_diagonal(b.values, 0)
-
-        # np.fill_diagonal(a.values, a.values.max(axis=0))
-        # np.fill_diagonal(b.values, b.values.max(axis=0))
-
-        # subset labels only by those represented in both sets
-        overlap = a[0].index.intersection(b[0].index)
-        asubset = a[0].loc[overlap, overlap]
-        bsubset = b[0].loc[overlap, overlap]
-
-        # dict of { <label>: <similarity> }
-        grp_distances = pd.Series(
-            metrics.rowise_cosine_similarity(asubset.values, bsubset.values),
-            index=overlap,
-        )
-
-        return (
-            a[1].map(grp_distances).astype(float),
-            b[1].map(grp_distances).astype(float),
-        )
+    # TODO: need to merge abundance stuff first
+    def abundance():
+        ...
 
     # METRIC START
 
     metric_options: list[tuple[str, Callable]] = [
-        ("Label-Label similarity", label_label)
+        ("confusion", confusion),
+        ("neighborhood", neighborhood),
     ]
 
     metric = ipywidgets.Dropdown(
         options=metric_options,
-        value=label_label,
+        value=confusion,
         description="metric: ",
     )
 
@@ -324,7 +384,7 @@ def compare(
             left.zoom(to=None)
             right.zoom(to=None)
         else:
-            left.zoom(to=left.categorial_scatter.selection()) 
+            left.zoom(to=left.categorial_scatter.selection())
             right.zoom(to=right.categorial_scatter.selection())
 
     zoom.observe(handle_zoom_change, names="value")
@@ -369,8 +429,10 @@ def compare(
         right.categorial_scatter.widget.observe(transform_right, names="selection")
 
         def unlink_all():
-            left.categorial_scatter.unobserve(transform_left, names="selection")
-            right.categorial_scatter.unobserve(transform_right, names="selection")
+            left.categorial_scatter.widget.unobserve(transform_left, names="selection")
+            right.categorial_scatter.widget.unobserve(
+                transform_right, names="selection"
+            )
 
         unlink = unlink_all
 
@@ -382,7 +444,7 @@ def compare(
             ("phenotype", phenotype),
         ]
     else:
-        initial_selection = independent
+        initial_selection = phenotype
         selection_type_options = [
             ("independent", independent),
             ("phenotype", phenotype),

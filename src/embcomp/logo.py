@@ -318,4 +318,3 @@ def marker_slider(markers: list[str]):
     marker = MarkerIndicator(markers=markers)
     ipywidgets.dlink((slider, "value"), (marker, "level"))
     return slider, marker
-

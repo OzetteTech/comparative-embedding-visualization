@@ -1,9 +1,9 @@
-from typing import Iterable, Union, Callable, ParamSpec
+from typing import Callable, Iterable, ParamSpec, Union
 
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import jscatter
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 
 Covariance2D = tuple[tuple[float, float], tuple[float, float]]

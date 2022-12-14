@@ -106,7 +106,7 @@ def downsample(data: pd.DataFrame, labels: list[str], frac: float = 0.5):
 def case1():
     """Displacement"""
     data = generate_data()
-    return data, translate(data, labels=["A"], offset = (6.5, 0))
+    return data, translate(data, labels=["A"], offset=(6.5, 0))
 
 
 def case2():
@@ -206,6 +206,7 @@ def case6d():
 
 MetricFn = Callable[[pd.DataFrame], pd.DataFrame]
 
+
 def plot_neighborhood(
     a: pd.DataFrame,
     b: pd.DataFrame,
@@ -235,7 +236,7 @@ def plot_neighborhood(
 
         overlap = ma.index.intersection(mb.index)
 
-        dist = { label: 0 for label in ma.index.union(mb.index) }
+        dist = {label: 0 for label in ma.index.union(mb.index)}
 
         sim = rowise_cosine_similarity(
             ma.loc[overlap, overlap], mb.loc[overlap, overlap]
