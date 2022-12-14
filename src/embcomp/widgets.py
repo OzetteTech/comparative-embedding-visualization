@@ -326,11 +326,11 @@ def compare(
 
     # representative label
     markers = [m.name for m in parse_label(a.labels.iloc[0])]
-    marker_level = MarkerIndicator(markers=markers)
+    marker_level = MarkerIndicator(markers=markers, value=len(markers))
 
     left, right = a.widgets(**kwargs), b.widgets(**kwargs)
 
-    def confusion(_level: int):
+    def confusion():
         def _confusion(emb: EmbeddingWidgetCollection, knn_indices: KnnIndices):
             res = dynamic_k(emb._data, knn_indices=knn_indices)
             label_confusion = 1 - metrics.rowise_cosine_similarity(
@@ -340,13 +340,13 @@ def compare(
 
         return _confusion(left, a.knn_indices), _confusion(right, b.knn_indices)
 
-    def _count_first(_level: int):
+    def _count_first():
         ma = count_first(left._data, type="both", agg="set", knn_indices=a.knn_indices)
         mb = count_first(right._data, type="both", agg="set", knn_indices=b.knn_indices)
         return ma, mb
 
-    def neighborhood(level: int):
-        ma, mb = _count_first(level)
+    def neighborhood():
+        ma, mb = _count_first()
         overlap = ma.index.intersection(mb.index)
         dist = {label: 0 for label in ma.index.union(mb.index)}
         sim = metrics.rowise_cosine_similarity(
@@ -355,8 +355,8 @@ def compare(
         dist.update(sim)
         return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
-    def abundance(level: int):
-        counts = _count_first(level)
+    def abundance():
+        counts = _count_first()
         abundances = [
             transform_abundance(rep, abundances=emb.labels.value_counts().to_dict())
             for rep, emb in zip(counts, (left, right))
@@ -373,7 +373,7 @@ def compare(
 
     # METRIC START
 
-    metric_options: list[tuple[str, Callable[[int], tuple]]] = [
+    metric_options: list[tuple[str, Callable]] = [
         ("confusion", confusion),
         ("neighborhood", neighborhood),
         ("abundance", abundance),
@@ -386,7 +386,7 @@ def compare(
     )
 
     def update_distances():
-        distances = metric.value(marker_level.value)
+        distances = metric.value()
         for dist, emb in zip(distances, (left, right)):
             if metric.value == abundance:
                 vmax = max(abs(dist.min()), abs(dist.max()), 3)
@@ -562,8 +562,7 @@ def compare(
     widget.metric = metric
     widget.count_first = _count_first
 
-    marker_level.value = 1
-    update_distances()
+    marker_level.value = 1  # set the lowest marker_level
     return widget
 
 
