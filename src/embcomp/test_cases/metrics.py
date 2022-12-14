@@ -17,28 +17,36 @@ def _validate_df(df: pd.DataFrame):
 
 def process_bags(
     labels: pd.Series,
-    indices_bags: dict[str, np.ndarray],
+    outgoing: np.ndarray,
     type: Literal["incoming", "outgoing", "both"],
     agg: Literal["set", "sum"],
 ):
-
-    # flatten
-    outgoing = {k: v.ravel() for k, v in indices_bags.items()}
+    categories = labels.cat.categories
+    outgoing_bags = {
+        label: outgoing[labels.values == label].ravel() for label in categories
+    }
 
     if type == "outgoing":
-        bags = outgoing
+        bags = outgoing_bags
     else:
-        incoming = {}
-        for label in outgoing:
-            others = np.concatenate([v for k, v in outgoing.items() if k != label])
-            matches = labels.iloc[others] == label
-            incoming[label] = matches.index.to_numpy()
+        incoming_bags = {}  # dict[str, 1D array of indices]
+        outgoing_identities = np.where(
+            outgoing == -1, "__NONE__", labels.values[outgoing]
+        )
+        for label in categories:
+            # find all points (rows) where one of the outgoing neighbors is `label`.
+            row_matches = np.any(outgoing_identities == label, axis=1)
+            # ignore outgoing for this label
+            row_matches[labels.values == label] = False
+            # grab the row indices which correspond to the original label ilocs
+            incoming_bags[label] = np.where(row_matches)[0]
         if type == "incoming":
-            bags = incoming
+            bags = incoming_bags
         else:
-            bags = {}
-            for k in outgoing:
-                bags[k] = np.concatenate((outgoing[k], incoming[k]))
+            bags = {
+                label: np.concatenate((outgoing_bags[label], incoming_bags[label]))
+                for label in categories
+            }
 
     if agg == "set":
         bags = {k: np.unique(v) for k, v in bags.items()}
@@ -76,9 +84,11 @@ def dynamic_k(
     compute_k: Callable[[int], int] = lambda size: int(np.ceil(np.log2(size))),
     kind: Literal["set", "sum"] = "set",
     knn_indices: Union[np.ndarray, None] = None,
+    type: Literal["incoming", "outgoing", "both"] = "outgoing",
 ):
     _validate_df(df)
 
+    categories = df.label.cat.categories
     sizes = df.label.value_counts(sort=True)
 
     if knn_indices is None:
@@ -87,21 +97,21 @@ def dynamic_k(
             k=max(map(compute_k, sizes)),
         )
 
-    indices_bags = {}
-    for label in df.label.cat.categories:
-        k = compute_k(sizes.loc[label])
-        indices_bags[label] = knn_indices[df.label.values == label, 0:k]
+    ks = [compute_k(sizes.loc[label]) for label in categories]
 
-    return process_bags(
-        labels=df.label, indices_bags=indices_bags, type="outgoing", agg=kind
-    )
+    outgoing = np.full((len(df), max(ks)), fill_value=-1, dtype="int64")
+    for label, k in zip(categories, ks):
+        label_mask = df.label.values == label
+        outgoing[label_mask, 0:k] = knn_indices[df.label.values == label, 0:k]
+
+    return process_bags(labels=df.label, outgoing=outgoing, type=type, agg=kind)
 
 
 def count_first(
     df: pd.DataFrame,
     n: int = 0,
     agg: Literal["set", "sum"] = "set",
-    type: Literal["incoming", "outgoing", "both"] = "incoming",
+    type: Literal["incoming", "outgoing", "both"] = "both",
     knn_indices: Union[np.ndarray, None] = None,
 ):
     _validate_df(df)
@@ -120,7 +130,8 @@ def count_first(
 
     knn_identities = df.label.values[knn_indices]
 
-    indices_bags = {}
+    outgoing = np.full((len(df.label), n + 1), fill_value=-1, dtype="int64")
+
     for label in df.label.cat.categories:
         # TODO: dynamically set the start position for k
         confusion_k_start = 0
@@ -129,15 +140,13 @@ def count_first(
             knn_identities[label_mask, confusion_k_start:] != label,
             axis=1,
         )
-        bag = np.zeros((len(first_non_self_indices), n + 1), dtype="int64")
         for i in range(n + 1):
-            bag[:, i] = knn_indices[
+            outgoing[label_mask, i] = knn_indices[
                 label_mask, first_non_self_indices + confusion_k_start
             ]
             first_non_self_indices += 1
-        indices_bags[label] = bag
 
-    return process_bags(labels=df.label, indices_bags=indices_bags, agg=agg, type=type)
+    return process_bags(labels=df.label, outgoing=outgoing, agg=agg, type=type)
 
 
 def transform_abundance(
