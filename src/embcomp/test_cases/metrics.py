@@ -105,6 +105,13 @@ def dynamic_k(
         labels=df.label, indices_bags=indices_bags, type="outgoing", agg=kind
     )
 
+def sampling_first_other(
+    df: pd.DataFrame,
+    type: Literal["incoming", "outgoing", "both"] = "outgoing",
+    iters: int = 100,
+):
+
+
 
 def count_first(
     df: pd.DataFrame,
@@ -198,7 +205,7 @@ def merge_abundances_left(left: pd.DataFrame, right: pd.DataFrame):
     missing = list(set(index).difference(left.index))
     merged.loc[missing, right.columns] = right.loc[missing, right.columns]
     # make sure to zero out diagonal for right-copied rows
-    merged.loc[missing, missing] = 1
+    merged.loc[missing, missing] = 0
     return merged
 
 

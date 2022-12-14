@@ -3,7 +3,6 @@ import functools
 import itertools
 from typing import Callable, Iterable, Union, overload
 
-import cmasher as cmr
 import ipywidgets
 import jscatter
 import numpy as np
@@ -12,8 +11,13 @@ import pandas as pd
 import traitlets
 
 import embcomp.metrics as metrics
-from embcomp._widget_utils import link_widgets
-from embcomp.logo import AnnotationLogo, marker_slider, parse_label, trim_label_series
+from embcomp._widget_utils import link_widgets, diverging_cmap
+from embcomp.logo import (
+    AnnotationLogo,
+    parse_label,
+    trim_label_series,
+    MarkerIndicator,
+)
 from embcomp.test_cases.metrics import (
     centered_logratio,
     count_first,
@@ -204,6 +208,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
                 background_color=background_color,
                 axes=axes,
                 opacity_unselected=opacity_unselected,
+                lasso_initiator=False,
                 **kwargs,
             )
             for _ in range(2)
@@ -318,7 +323,7 @@ def compare(
 
     # representative label
     markers = [m.name for m in parse_label(a.labels.iloc[0])]
-    label_slider, marker_indicator = marker_slider(markers)
+    marker_level = MarkerIndicator(markers=markers)
 
     left, right = a.widgets(**kwargs), b.widgets(**kwargs)
 
@@ -392,13 +397,13 @@ def compare(
     )
 
     def update_distances():
-        distances = metric.value(label_slider.value)
+        distances = metric.value(marker_level.value)
         for dist, emb in zip(distances, (left, right)):
             if metric.value == abundance:
                 vmax = max(abs(dist.min()), abs(dist.max()), 3)
                 emb.metric_color_options = (
-                    cmr.iceburn.colors[::-1],
-                    cmr.iceburn.colors,
+                    diverging_cmap[::-1],
+                    diverging_cmap,
                     [-vmax, vmax],
                 )
             else:
@@ -473,6 +478,7 @@ def compare(
                 for emb in (left, right):
                     ilocs = np.where(emb.robust_labels.isin(phenotypes))[0]
                     emb.categorial_scatter.widget.selection = ilocs
+                    emb.metric_scatter.widget.selection = ilocs
 
             return handler
 
@@ -522,15 +528,13 @@ def compare(
         )
         update_distances()
 
-    label_slider.observe(on_label_level_change, names="value")
+    marker_level.observe(on_label_level_change, names="value")
     # LABELS END
 
     header = ipywidgets.VBox(
         [
-            marker_indicator,
-            ipywidgets.HBox(
-                [label_slider, selection_type, metric, inverted, zoom],
-            ),
+            marker_level,
+            ipywidgets.HBox([selection_type, metric, inverted, zoom]),
         ]
     )
 
@@ -542,13 +546,15 @@ def compare(
     )
 
     # initialize
-    label_slider.value = 1
+    marker_level.value = 1
     update_distances()
     widget = ipywidgets.VBox([header, main])
     add_ilocs_trait(widget, left, right)
 
     widget.left = left
     widget.right = right
+    widget.metric = metric
+    widget.count_first = _count_first
 
     return widget
 

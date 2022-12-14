@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import traitlets
 import traittypes
+import anywidget
 
 from embcomp._widget_utils import link_widgets
 
@@ -272,49 +273,53 @@ class AnnotationLogo(ipywidgets.VBox):
         self._threshold.value = self._threshold.max
 
 
-class MarkerIndicator(HTMLWidget):
-    # fmt: off
-    _template = jinja2.Template("""
-    <style>
-        .marker-level-container {
-            display: flex;
-            font-family: monospace;
-        }
+_marker_indicator_esm = """
+export async function render(view) {
+  function rerender() {
+    let el = view.el;
+    Object.assign(el.style, { display: "flex", fontFamily: "monospace" });
+    let markers = view.model.get("markers");
+    let level = view.model.get("value") - 1;
+    let diff = markers.length - el.childElementCount;
+    if (diff > 0) {
+      for (let i = 0; i < diff; i++) {
+        let button = document.createElement("button");
+        Object.assign(div.style, {
+          // padding: "3px 3px",
+          // borderRight: "1px solid",
+          // borderTop: "1px solid",
+          // borderBottom: "1px solid",
+        });
+        button.addEventListener("click", function () {
+          view.model.set("value", +this.getAttribute("data-index") + 1);
+          view.model.save_changes();
+        });
+        el.appendChild(button);
+      }
+    } else if (diff < 0) {
+      for (let i = 0; i < -diff; i++) {
+        el.removeChild(el.lastChild);
+      }
+    }
+    for (let i = 0; i < markers.length; i++) {
+      let child = el.childNodes[i];
+      if (i <= level) {
+        child.style.backgroundColor = "#d5d5d5";
+      } else {
+        child.style.backgroundColor = "#f5f5f5";
+      }
+      child.textContent = markers[i];
+      child.setAttribute("data-index", i);
+    }
+  }
+  view.model.on("change:markers", rerender);
+  view.model.on("change:value", rerender);
+  rerender();
+}
+"""
 
-        .marker-level-container > div {
-            padding: 0px 3px;
-            background-color: #f5f5f5;
-            border-right: 1px solid;
-            border-top: 1px solid;
-            border-bottom: 1px solid;
-        }
 
-        .marker-level-container > div:first-child {
-            border-left: 1px solid;
-        }
-
-        .marker-level-container > div[highlight] {
-            background-color: #d5d5d5;
-        }
-    </style>
-    <div class="marker-level-container">
-        {% for marker in markers[:level] %}<div highlight>{{ marker }}</div>{% endfor %}
-        {% for marker in markers[level:] %}<div>{{ marker }}</div>{% endfor %}
-    </div>
-    """)
-    # fmt: on
-    markers = traitlets.List()
-    level = traitlets.Int(0)
-
-
-def marker_slider(markers: list[str]):
-    slider = ipywidgets.IntSlider(
-        description="marker level:",
-        value=len(markers),
-        min=1,
-        max=len(markers),
-        continuous_update=False,
-    )
-    marker = MarkerIndicator(markers=markers)
-    ipywidgets.dlink((slider, "value"), (marker, "level"))
-    return slider, marker
+class MarkerIndicator(anywidget.AnyWidget):
+    _module = traitlets.Unicode(_marker_indicator_esm).tag(sync=True)
+    markers = traitlets.List().tag(sync=True)
+    value = traitlets.Int(1).tag(sync=True)
