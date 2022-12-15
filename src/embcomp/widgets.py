@@ -12,7 +12,13 @@ import traitlets
 
 import embcomp.metrics as metrics
 from embcomp._widget_utils import diverging_cmap, link_widgets
-from embcomp.logo import AnnotationLogo, MarkerIndicator, parse_label, trim_label_series
+from embcomp.logo import (
+    AnnotationLogo,
+    Logo,
+    MarkerIndicator,
+    parse_label,
+    trim_label_series,
+)
 from embcomp.test_cases.metrics import (
     centered_logratio,
     count_first,
@@ -164,7 +170,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         labels: pd.Series,
         categorial_scatter: jscatter.Scatter,
         metric_scatter: jscatter.Scatter,
-        logo: AnnotationLogo,
+        logo: Logo,
         labeler: Callable[[npt.ArrayLike], pd.Series],
     ):
         self.categorial_scatter = categorial_scatter
@@ -181,6 +187,14 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self.labels = labels
         self.distances = 0  # type: ignore
         self.colormap = create_colormaps(self.robust_labels.cat.categories)
+
+        ipywidgets.dlink(
+            source=(self.categorial_scatter.widget, "selection"),
+            target=(self.logo, "counts"),
+            transform=lambda ilocs: {
+                k: int(v) for k, v in self.labels.iloc[ilocs].value_counts().items()
+            },
+        )
 
     @property
     def _data(self) -> pd.DataFrame:
@@ -219,7 +233,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             (metric_scatter.widget, "selection"),
         )
 
-        logo = AnnotationLogo(emb.labels)
+        logo = Logo()
 
         return cls(
             labels=emb.labels,
@@ -292,6 +306,8 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             widget = scatter.show()
             widget.layout = {"margin": "0 0 2px 0"}
             widgets.append(widget)
+
+        widgets.append(self.logo)
 
         return ipywidgets.VBox(widgets, **kwargs)
 
