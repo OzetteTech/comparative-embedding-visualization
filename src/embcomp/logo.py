@@ -356,18 +356,19 @@ class Logo(HTMLWidget):
             .style("display", "flex")
             .style("flex-wrap", "wrap")
             .style("font-size", "12px")
+            .style("margin-left", "36px") // aligns to jscatter plot
             .selectAll("div")
             .data(data)
             .join("div")
             .call(function(g) {
                 g.style("display", "flex")
                  .style("align-items", "center")
-                 .style("border", "black solid 1px")
+                 .style("border", "black solid 0.5px")
                  .style("background-color", d => d[1][0] > 0.5 ? "black" : "white")
                  .style("margin", "2px")
 
                 g.append("div")
-                    .style("margin-right", "2px")
+                    .style("margin", "0px 4px")
                     .style("color", d => d[1][0] > 0.5 ? "white" : "black")
                     .text(d => d[0])
 

@@ -1,5 +1,4 @@
 import dataclasses
-import functools
 import itertools
 from typing import Callable, Iterable, Union, overload
 
@@ -13,7 +12,6 @@ import traitlets
 import embcomp.metrics as metrics
 from embcomp._widget_utils import diverging_cmap, link_widgets
 from embcomp.logo import (
-    AnnotationLogo,
     Logo,
     MarkerIndicator,
     parse_label,
@@ -191,10 +189,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         ipywidgets.dlink(
             source=(self.categorial_scatter.widget, "selection"),
             target=(self.logo, "counts"),
-            transform=lambda ilocs: {
-                k: int(v) for k, v in self.labels.iloc[ilocs].value_counts().items()
-            },
+            transform=self.label_counts,
         )
+
+    def label_counts(self, ilocs: Union[None, np.ndarray] = None) -> dict:
+        labels = self.labels if ilocs is None else self.labels.iloc[ilocs]
+        return { k: int(v) for k, v in labels.value_counts().items() }
 
     @property
     def _data(self) -> pd.DataFrame:
@@ -253,11 +253,11 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     @labels.setter
     def labels(self, labels: npt.ArrayLike):
-        self.logo.labels = labels
         self._data[_LABEL_COLUMN] = pd.Series(np.asarray(labels), dtype="category")
         self._data[_ROBUST_LABEL_COLUMN] = pd.Series(
             np.asarray(self._labeler(labels)), dtype="category"
         )
+        self.logo.counts = self.label_counts(self.categorial_scatter.widget.selection)
 
     @traitlets.observe("inverted")
     def _update_metric_scatter(self, *args, **kwargs):
