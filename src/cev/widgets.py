@@ -9,15 +9,15 @@ import numpy.typing as npt
 import pandas as pd
 import traitlets
 
-import embcomp.metrics as metrics
-from embcomp._widget_utils import diverging_cmap, link_widgets
-from embcomp.logo import (
+import cev.metrics as metrics
+from cev._widget_utils import diverging_cmap, link_widgets
+from cev.logo import (
     Logo,
     MarkerIndicator,
     parse_label,
     trim_label_series,
 )
-from embcomp.test_cases.metrics import (
+from cev.test_cases.metrics import (
     centered_logratio,
     count_first,
     dynamic_k,

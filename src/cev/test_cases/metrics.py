@@ -5,7 +5,7 @@ import pandas as pd
 import scipy.stats.mstats
 from sklearn.neighbors import NearestNeighbors
 
-from embcomp.metrics import count_neighbor_labels
+from cev.metrics import count_neighbor_labels
 
 
 def _validate_df(df: pd.DataFrame):

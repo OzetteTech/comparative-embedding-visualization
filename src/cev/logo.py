@@ -13,7 +13,7 @@ import pandas as pd
 import traitlets
 import traittypes
 
-from embcomp._widget_utils import link_widgets
+from cev._widget_utils import link_widgets
 
 here = pathlib.Path(__file__).parent
 

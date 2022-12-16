@@ -1,4 +1,4 @@
-import embcomp.metrics as metrics
-import embcomp.transformation as transformation
-import embcomp.widgets as widgets
-from embcomp._version import version as __version__
+import cev.metrics as metrics
+import cev.transformation as transformation
+import cev.widgets as widgets
+from cev._version import version as __version__

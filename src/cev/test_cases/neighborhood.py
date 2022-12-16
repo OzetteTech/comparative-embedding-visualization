@@ -8,9 +8,9 @@ import pandas as pd
 from matplotlib.colors import Normalize
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-import embcomp.test_cases.confusion as confusion
-from embcomp.metrics import rowise_cosine_similarity
-from embcomp.test_cases.utils import Covariance2D, dataframe, plot
+import cev.test_cases.confusion as confusion
+from cev.metrics import rowise_cosine_similarity
+from cev.test_cases.utils import Covariance2D, dataframe, plot
 
 
 @dataframe
