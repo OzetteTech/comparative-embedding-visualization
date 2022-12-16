@@ -4,6 +4,6 @@ data/
 .snakemake/
 .ipynb_checkpoints/
 *.egg-info/
-src/embcomp/_version.py
+src/cev/_version.py
 .vite
 
