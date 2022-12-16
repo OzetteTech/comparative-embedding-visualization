@@ -1,4 +1,4 @@
-# comparative-embedding-visualization
+# cev
 
 ## setup
 
