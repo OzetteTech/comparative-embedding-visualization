@@ -1,4 +1,4 @@
-name: embcomp
+name: cev
 channels:
   - bioconda
   - conda-forge
@@ -9,5 +9,6 @@ dependencies:
   - pip
   - pip:
     - jupyterlab>=3.0.6
+    - seaborn
     - pyarrow
     - fastparquet
