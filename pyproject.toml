@@ -42,6 +42,11 @@ dev = [
     "rich",
     "ruff",
 ]
+notebooks = [
+    "seaborn",
+    "pyarrow",
+    "fastparquet"
+]
 
 [project.urls]
 homepage = "https://github.com/OzetteTech/comparative-embedding-visualization"
@@ -53,7 +58,7 @@ sources = ["src"]
 source = "vcs"
 
 [tool.hatch.envs.default]
-features = ["dev"]
+features = ["dev", "notebooks"]
 
 [tool.ruff]
 line-length = 88
