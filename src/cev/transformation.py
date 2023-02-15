@@ -24,8 +24,8 @@ def prepare(
         df["complete_faust_label"] += marker + df[f"{marker}_faust_annotation"]
 
     expression_levels: dict[str, float] = {
-        l: i * spread_factor
-        for i, l in enumerate(df[f"{markers[0]}_faust_annotation"].unique())
+        label: i * spread_factor
+        for i, label in enumerate(df[f"{markers[0]}_faust_annotation"].unique())
     }
 
     df.sort_values(by=["faustLabels"], ignore_index=True, inplace=True)
@@ -52,7 +52,8 @@ def transform(
                 f"Transform {i}-{i + 999} of {len(faust_labels)} clusters... ", end=""
             )
 
-        # First, we get the indices of all data points belonging to the cluster (i.e., cell phenotype)
+        # First, we get the indices of all data points belonging to
+        # the cluster (i.e., cell phenotype)
         idxs = df.query(f'complete_faust_label == "{faust_label}"').index
 
         # 1. We winsorize the expression values to [0.01, 99.9]

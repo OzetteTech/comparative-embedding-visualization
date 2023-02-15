@@ -1,6 +1,9 @@
 import traitlets
 
-_ERR_MESSAGE = "The truth value of an array with more than one element is ambiguous. Use a.any() or a.all()"
+_ERR_MESSAGE = (
+    "The truth value of an array with more than one element is ambiguous. "
+    + "Use a.any() or a.all()"
+)
 
 
 # patched version which allows for numpy comparison

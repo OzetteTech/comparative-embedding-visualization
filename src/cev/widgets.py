@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import dataclasses
 import itertools
-from typing import Callable, Iterable, Union, overload
+from typing import Callable, Iterable, overload
 
 import ipywidgets
 import jscatter
@@ -34,9 +36,7 @@ Distances = npt.NDArray[np.float_]
 NON_ROBUST_LABEL = "0_0_0_0_0"
 
 
-def robust_labels(
-    labels: npt.ArrayLike, robust: Union[npt.NDArray[np.bool_], None] = None
-):
+def robust_labels(labels: npt.ArrayLike, robust: npt.NDArray[np.bool_] | None = None):
     if robust is not None:
         labels = np.where(
             robust,
@@ -58,7 +58,7 @@ def create_colormaps(cats: Iterable[str], *other: Iterable[str]) -> tuple[dict, 
 
 def create_colormaps(
     cats: Iterable[str], *others: Iterable[str]
-) -> Union[dict, tuple[dict, ...]]:
+) -> dict | tuple[dict, ...]:
     all_categories = set(cats)
     for other in others:
         all_categories.update(other)
@@ -86,10 +86,10 @@ class Embedding:
     coords: Coordinates
     knn_indices: KnnIndices
     labels: Labels
-    robust: Union[npt.NDArray[np.bool_], None] = None
+    robust: npt.NDArray[np.bool_] | None = None
 
     @classmethod
-    def from_df(cls, df: pd.DataFrame, knn_indices: Union[None, KnnIndices] = None):
+    def from_df(cls, df: pd.DataFrame, knn_indices: None | KnnIndices = None):
         if knn_indices is None:
             largest_category_size = min(
                 500,
@@ -108,7 +108,7 @@ class Embedding:
         cls,
         df: pd.DataFrame,
         robust_only: bool = True,
-        knn_indices: Union[None, KnnIndices] = None,
+        knn_indices: None | KnnIndices = None,
     ):
         # ISMB data
         if "cellType" in df.columns:
@@ -191,7 +191,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             transform=self.label_counts,
         )
 
-    def label_counts(self, ilocs: Union[None, np.ndarray] = None) -> dict:
+    def label_counts(self, ilocs: None | np.ndarray = None) -> dict:
         labels = self.labels if ilocs is None else self.labels.iloc[ilocs]
         return {k: int(v) for k, v in labels.value_counts().items()}
 
@@ -296,7 +296,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         yield self.categorial_scatter
         yield self.metric_scatter
 
-    def show(self, row_height: Union[int, None] = None, **kwargs):
+    def show(self, row_height: int | None = None, **kwargs):
         widgets = []
 
         for scatter in self.scatters:
@@ -310,7 +310,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
         return ipywidgets.VBox(widgets, **kwargs)
 
-    def zoom(self, to: Union[None, npt.NDArray] = None):
+    def zoom(self, to: None | npt.NDArray = None):
         if to is not None:
             to = to if len(to) > 0 else None
         for s in self.scatters:
@@ -329,8 +329,8 @@ def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
 
 
 def compare(
-    a: Union[tuple[pd.DataFrame, KnnIndices], Embedding],
-    b: Union[tuple[pd.DataFrame, KnnIndices], Embedding],
+    a: tuple[pd.DataFrame, KnnIndices] | Embedding,
+    b: tuple[pd.DataFrame, KnnIndices] | Embedding,
     row_height: int = 250,
     **kwargs,
 ):
@@ -380,7 +380,7 @@ def compare(
             merge_abundances_left(abundances[0], abundances[1]),
             merge_abundances_left(abundances[1], abundances[0]),
         ]
-        label_dista, label_distb = [centered_logratio(ab) for ab in merged]
+        label_dista, label_distb = (centered_logratio(ab) for ab in merged)
         return (
             left.labels.map(label_dista - label_distb).astype(float),
             right.labels.map(label_distb - label_dista).astype(float),
@@ -428,7 +428,7 @@ def compare(
                 )
             else:
                 raise ValueError(
-                    f"jscatter color options not specified for metric, {metric.value.__name__}"
+                    f"color options unspecified for metric, {metric.value.__name__}"
                 )
 
             emb.distances = dist
@@ -447,7 +447,7 @@ def compare(
 
     def handle_selection_change_zoom(emb: EmbeddingWidgetCollection):
         def on_change(change):
-            if zoom.value == False:
+            if zoom.value is False:
                 return
             emb.zoom(to=change.new)
 
@@ -461,7 +461,7 @@ def compare(
     )
 
     def handle_zoom_change(change):
-        if change.new == False:
+        if change.new is False:
             left.zoom(to=None)
             right.zoom(to=None)
         else:
@@ -473,7 +473,8 @@ def compare(
     # ZOOM END
 
     # SELECTION START
-    unlink: Callable[[], None] = lambda: None
+    def unlink():
+        return None
 
     def independent():
         nonlocal unlink
@@ -586,7 +587,10 @@ def add_ilocs_trait(
     right: EmbeddingWidgetCollection,
     left: EmbeddingWidgetCollection,
 ):
-    """Adds a `.ilocs` tuple trait to the final widget which contains the (left, right) selections."""
+    """Adds a `.ilocs` tuple trait to the final widget.
+
+    Containts the (left, right) selections.
+    """
     initial = (
         left.categorial_scatter.selection(),
         right.categorial_scatter.selection(),

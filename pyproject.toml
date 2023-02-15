@@ -65,3 +65,4 @@ extend-select = [
     "UP",   # pyupgrade
     "RUF",  # ruff-specific rules
 ]
+ignore = ["E501"] # ignore line-length, enforced by black
