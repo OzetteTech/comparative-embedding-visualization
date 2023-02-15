@@ -6,4 +6,4 @@ data/
 *.egg-info/
 src/embcomp/_version.py
 .vite
-
+dist/
