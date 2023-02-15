@@ -29,10 +29,7 @@ class Marker:
         return self.name + self.annotation
 
 
-Annotation = list[Marker]
-
-
-def parse_label(label: str) -> Annotation:
+def parse_label(label: str) -> list[Marker]:
     return [
         Marker(inner_label[:-1], inner_label[-1])
         for inner_label in re.split("(\w+[\-|\+])", label)
