@@ -213,7 +213,6 @@ def plot_neighborhood(
     metrics: list[Union[MetricFn, tuple[str, MetricFn]]],
     name: Union[str, None] = None,
 ):
-
     fig, axs = plt.subplots(
         nrows=2, ncols=len(metrics) + 1, figsize=(12, 3), sharex=True, sharey=True
     )

@@ -210,7 +210,6 @@ def merge_abundances_left(left: pd.DataFrame, right: pd.DataFrame):
 
 
 def relative_abundance(abundance_representation: pd.DataFrame):
-
     return np.diagonal(abundance_representation) / abundance_representation.sum(axis=1)
 
 

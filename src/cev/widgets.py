@@ -110,7 +110,6 @@ class Embedding:
         robust_only: bool = True,
         knn_indices: Union[None, KnnIndices] = None,
     ):
-
         # ISMB data
         if "cellType" in df.columns:
             robust = (df["cellType"] != NON_ROBUST_LABEL).to_numpy()
@@ -194,7 +193,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     def label_counts(self, ilocs: Union[None, np.ndarray] = None) -> dict:
         labels = self.labels if ilocs is None else self.labels.iloc[ilocs]
-        return { k: int(v) for k, v in labels.value_counts().items() }
+        return {k: int(v) for k, v in labels.value_counts().items()}
 
     @property
     def _data(self) -> pd.DataFrame:
