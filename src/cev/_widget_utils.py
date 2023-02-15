@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import traitlets
 
 _ERR_MESSAGE = (

@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import functools
-from typing import Callable, Union
+from typing import Callable
 
 import jscatter
 import matplotlib.pyplot as plt
@@ -14,7 +16,7 @@ from cev.test_cases.utils import Covariance2D, dataframe
 
 @dataframe
 def generate_data(
-    neighborhood_offset: Union[float, None] = 13,
+    neighborhood_offset: float | None = 13,
     x: float = 2.5,
     cov: Covariance2D = ((0.2, 0), (0, 0.2)),
     size: int = 500,
@@ -42,7 +44,7 @@ def generate_data(
 
 @dataframe
 def generate_data_unbalanced(
-    neighborhood_offset: Union[float, None] = 13,
+    neighborhood_offset: float | None = 13,
     x: float = 2.5,
     cov: Covariance2D = ((0.2, 0), (0, 0.2)),
     size: int = 500,
@@ -209,8 +211,8 @@ MetricFn = Callable[[pd.DataFrame], pd.DataFrame]
 def plot_neighborhood(
     a: pd.DataFrame,
     b: pd.DataFrame,
-    metrics: list[Union[MetricFn, tuple[str, MetricFn]]],
-    name: Union[str, None] = None,
+    metrics: list[MetricFn | tuple[str, MetricFn]],
+    name: str | None = None,
 ):
     fig, axs = plt.subplots(
         nrows=2, ncols=len(metrics) + 1, figsize=(12, 3), sharex=True, sharey=True

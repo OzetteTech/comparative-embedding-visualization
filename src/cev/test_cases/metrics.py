@@ -1,4 +1,6 @@
-from typing import Callable, Literal, Union
+from __future__ import annotations
+
+from typing import Callable, Literal
 
 import numpy as np
 import pandas as pd
@@ -72,7 +74,7 @@ def kneighbors(X: np.ndarray, k: int) -> np.ndarray:
     return nn.kneighbors(return_distance=False)
 
 
-def fixed_k(df: pd.DataFrame, k: int, knn_indices: Union[None, np.ndarray] = None):
+def fixed_k(df: pd.DataFrame, k: int, knn_indices: None | np.ndarray = None):
     _validate_df(df)
 
     if knn_indices is None:
@@ -90,7 +92,7 @@ def dynamic_k(
     df: pd.DataFrame,
     compute_k: Callable[[int], int] = lambda size: int(np.ceil(np.log2(size))),
     kind: Literal["set", "sum"] = "set",
-    knn_indices: Union[np.ndarray, None] = None,
+    knn_indices: np.ndarray | None = None,
     type: Literal["incoming", "outgoing", "both"] = "outgoing",
 ):
     _validate_df(df)
@@ -119,7 +121,7 @@ def count_first(
     n: int = 0,
     agg: Literal["set", "sum"] = "set",
     type: Literal["incoming", "outgoing", "both"] = "both",
-    knn_indices: Union[np.ndarray, None] = None,
+    knn_indices: np.ndarray | None = None,
 ):
     _validate_df(df)
 
