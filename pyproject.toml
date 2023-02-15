@@ -32,6 +32,16 @@ dependencies = [
 ]
 dynamic = ["version"]
 
+# https://peps.python.org/pep-0621/#dependencies-optional-dependencies
+[project.optional-dependencies]
+dev = [
+    "black[jupyter]",
+    "jupyterlab",
+    "pytest",
+    "rich",
+    "ruff",
+]
+
 [project.urls]
 homepage = "https://github.com/OzetteTech/comparative-embedding-visualization"
 
@@ -40,3 +50,18 @@ sources = ["src"]
 
 [tool.hatch.version]
 source = "vcs"
+
+[tool.hatch.envs.default]
+features = ["dev"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+extend-select = [
+    "E",    # style errors
+    "F",    # flake
+    # "D",    # pydocstyle
+    "I001", # isort
+    "UP",   # pyupgrade
+    "RUF",  # ruff-specific rules
+]
