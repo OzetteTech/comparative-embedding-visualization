@@ -320,7 +320,7 @@ export async function render(view) {
 
 
 class MarkerIndicator(anywidget.AnyWidget):
-    _module = traitlets.Unicode(_marker_indicator_esm).tag(sync=True)
+    _esm = _marker_indicator_esm
     markers = traitlets.List().tag(sync=True)
     value = traitlets.Int().tag(sync=True)
 
