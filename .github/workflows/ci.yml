@@ -41,7 +41,7 @@ jobs:
           pip install -e .[test,dev]
 
       - name: Run tests
-        run: pytest ./tests --color=yes
+        run: pytest --color=yes
 
   Release:
     if: startsWith(github.ref, 'refs/tags/')

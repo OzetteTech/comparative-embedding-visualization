@@ -71,6 +71,10 @@ check = [
     "black --check --diff .",
     "ruff .",
 ]
+test = "pytest --color=yes"
+
+[[tool.hatch.envs.test.matrix]]
+python = ["38", "39", "310"]
 
 [tool.ruff]
 line-length = 88
@@ -84,3 +88,12 @@ extend-select = [
     "RUF",  # ruff-specific rules
 ]
 ignore = ["E501"] # ignore line-length, enforced by black
+
+# https://docs.pytest.org/en/latest/customize.html
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore:Jupyter is migrating its paths:DeprecationWarning",
+    "ignore:Deprecated in traitlets 4.1, use the instance .metadata:DeprecationWarning",
+]

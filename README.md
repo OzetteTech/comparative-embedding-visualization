@@ -37,6 +37,8 @@ If using `hatch` CLI, the following commands are available in the default enviro
 | :--------------------- | :------------------------------------------------------------------ |
 | `hatch run fix`        | Format project with `black .` and apply linting with `ruff --fix .` |
 | `hatch run check`      | Check formatting and linting with `black --check .` and `ruff .`.   |
+| `hatch run test`       | Run unittests with `pytest` in base environment.                    |
+| `hatch run test:test`  | Run unittests with `pytest` in all supported environments.          |
 
 Alternatively, you can devlop **cev** by manually creating a virtual environment and managing
 dependencies with `pip`.
