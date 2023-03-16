@@ -59,7 +59,18 @@ sources = ["src"]
 source = "vcs"
 
 [tool.hatch.envs.default]
+python = "3.10"
 features = ["dev", "notebooks"]
+
+[tool.hatch.envs.default.scripts]
+fmt = [
+    "black .",
+    "ruff --fix .",
+]
+check = [
+    "black --check --diff .",
+    "ruff .",
+]
 
 [tool.ruff]
 line-length = 88
