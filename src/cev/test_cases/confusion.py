@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import functools
-from typing import Union
 
 import jscatter
 import matplotlib.pyplot as plt
@@ -14,7 +15,7 @@ from cev.test_cases.utils import Covariance2D, dataframe
 
 @dataframe
 def generate_data(
-    neighborhood_offset: Union[float, None] = 13,
+    neighborhood_offset: float | None = 13,
     x: float = 2.5,
     cov: Covariance2D = ((0.2, 0), (0, 0.2)),
     size: int = 500,

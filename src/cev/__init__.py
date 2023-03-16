@@ -1,4 +1,10 @@
-import cev.metrics as metrics
-import cev.transformation as transformation
-import cev.widgets as widgets
-from cev._version import version as __version__
+from importlib.metadata import PackageNotFoundError, version
+
+import cev.metrics as metrics  # noqa
+import cev.transformation as transformation  # noqa
+import cev.widgets as widgets  # noqa
+
+try:
+    __version__ = version("cev")
+except PackageNotFoundError:
+    __version__ = "uninstalled"

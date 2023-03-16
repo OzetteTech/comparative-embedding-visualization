@@ -1,15 +1,26 @@
 [build-system]
-requires = ["setuptools>=40.8.0", "setuptools-scm", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
 
 [project]
 name = "cev"
-maintainers = [
+description = "comparative embedding visualization"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+authors = [
     { name = "Trevor Manz" },
     { name = "Fritz Lekschas" },
 ]
-requires-python = ">=3.10"
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+]
+requires-python = ">=3.8,<3.11"
 dependencies = [
+    "anywidget",
     "ipywidgets>=8.0.0",
     "jinja2",
     "jupyter-scatter>=0.9.0",
@@ -26,20 +37,44 @@ dependencies = [
     "geopandas", # For Delaunay
 ]
 dynamic = ["version"]
-classifiers = [
-    "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+
+# https://peps.python.org/pep-0621/#dependencies-optional-dependencies
+[project.optional-dependencies]
+dev = [
+    "black[jupyter]",
+    "jupyterlab",
+    "pytest",
+    "rich",
+    "ruff",
+]
+notebooks = [
+    "snakemake",
+    "seaborn",
+    "pyarrow",
+    "fastparquet"
 ]
 
 [project.urls]
-Homepage = "https://github.com/OzetteTech/comparative-embedding-visualization"
+homepage = "https://github.com/OzetteTech/comparative-embedding-visualization"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.hatch.build]
+sources = ["src"]
 
-[tool.setuptools_scm]
-version_scheme = "guess-next-dev"
-local_scheme = "dirty-tag"
-write_to = "src/cev/_version.py"
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.envs.default]
+features = ["dev", "notebooks"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+extend-select = [
+    "E",    # style errors
+    "F",    # flake
+    # "D",    # pydocstyle
+    "I001", # isort
+    "UP",   # pyupgrade
+    "RUF",  # ruff-specific rules
+]
+ignore = ["E501"] # ignore line-length, enforced by black

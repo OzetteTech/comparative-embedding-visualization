@@ -1,12 +1,12 @@
 rule transform_and_embed:
     input: "{path}/{dataset_name}_embedding_output.parquet"
     output: "{path}/{dataset_name}_umap_annotated.parquet"
-    shell: "python scripts/transformation.py --transform {input} {output}"
+    shell: "python -m cev.transformation --transform {input} {output}"
 
 rule embed:
     input: "{path}/{dataset_name}_embedding_output.parquet"
     output: "{path}/{dataset_name}_umap.parquet",
-    shell: "python scripts/transformation.py {input} {output}"
+    shell: "python -m cev.transformation {input} {output}"
 
 # https://figshare.com/articles/dataset/ISMB_BioVis_2022_Data/20301639
 rule download:

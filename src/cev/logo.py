@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import dataclasses
 import pathlib
 import re
@@ -27,11 +29,12 @@ class Marker:
         return self.name + self.annotation
 
 
-Annotation = list[Marker]
-
-
-def parse_label(label: str) -> Annotation:
-    return [Marker(l[:-1], l[-1]) for l in re.split("(\w+[\-|\+])", label) if l]
+def parse_label(label: str) -> list[Marker]:
+    return [
+        Marker(inner_label[:-1], inner_label[-1])
+        for inner_label in re.split("(\w+[\-|\+])", label)
+        if inner_label
+    ]
 
 
 def trim_label(label: str, level: int):
@@ -191,7 +194,10 @@ class ConsensusLogo(HTMLWidget):
                 .text(consensusStr)
 
             if (data.total > 0) {
-                spans.style("background-color", (d) => colorScale((d.value / data.total + 1) / 2))
+                spans.style(
+                  "background-color",
+                  (d) => colorScale((d.value / data.total + 1) / 2),
+                );
             } else {
                 spans.style("background-color", "#f5f5f5");
             }
@@ -269,7 +275,7 @@ class AnnotationLogo(ipywidgets.VBox):
             for k, v in counts[counts > 0].items()  # type: ignore
         ]
 
-        self._threshold.max = max(l["count"] for l in self._logo.counts)  # type: ignore
+        self._threshold.max = max(count["count"] for count in self._logo.counts)
         self._threshold.value = self._threshold.max
 
 
@@ -320,7 +326,7 @@ export async function render(view) {
 
 
 class MarkerIndicator(anywidget.AnyWidget):
-    _module = traitlets.Unicode(_marker_indicator_esm).tag(sync=True)
+    _esm = _marker_indicator_esm
     markers = traitlets.List().tag(sync=True)
     value = traitlets.Int().tag(sync=True)
 

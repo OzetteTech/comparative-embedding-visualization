@@ -1,4 +1,6 @@
-from typing import Callable, Iterable, ParamSpec, Union
+from __future__ import annotations
+
+from typing import Callable, Iterable, ParamSpec
 
 import jscatter
 import matplotlib.pyplot as plt
@@ -12,7 +14,7 @@ P = ParamSpec("P")
 
 
 def dataframe(
-    generate_pts: Callable[P, Iterable[Union[tuple[str, np.ndarray], np.ndarray]]],
+    generate_pts: Callable[P, Iterable[tuple[str, np.ndarray] | np.ndarray]],
 ) -> Callable[P, pd.DataFrame]:
     """Collects sequence of X into a labeled pd.DataFrame"""
     labels: Iterable[str] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -36,8 +38,8 @@ def dataframe(
 
 def plot(
     a: pd.DataFrame,
-    b: Union[None, pd.DataFrame] = None,
-    ax: Union[None, plt.Axes] = None,  # type: ignore
+    b: None | pd.DataFrame = None,
+    ax: None | plt.Axes = None,  # type: ignore
 ):
     root: plt.Axes = ax or plt.gca()
 

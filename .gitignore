@@ -6,4 +6,4 @@ data/
 *.egg-info/
 src/cev/_version.py
 .vite
-
+dist/
