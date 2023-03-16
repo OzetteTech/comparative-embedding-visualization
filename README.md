@@ -29,6 +29,30 @@ You can now run the notebooks with:
 jupyterlab
 ```
 
+### Commands Cheatsheet
+
+If using `hatch` CLI, the following commands are available in the default environment:
+
+| Command                | Action                                                              |
+| :--------------------- | :------------------------------------------------------------------ |
+| `hatch run fix`        | Format project with `black .` and apply linting with `ruff --fix .` |
+| `hatch run check`      | Check formatting and linting with `black --check .` and `ruff .`.   |
+| `hatch run test`       | Run unittests with `pytest` in base environment.                    |
+| `hatch run test:test`  | Run unittests with `pytest` in all supported environments.          |
+
+Alternatively, you can devlop **cev** by manually creating a virtual environment and managing
+dependencies with `pip`.
+
+Our CI linting/formatting checks are configured with [`pre-commit`](https://pre-commit.com/).
+We recommend installing the git hook scripts to allow `pre-commit` to run automatically on `git commit`.
+
+```sh
+pre-commit install # run this once to install the git hooks
+```
+
+This will ensure that code pushed to CI meets our linting and formatting criteria. Code that does
+not comply will fail in CI.
+
 ## Release
 
 releases are triggered via tagged commits
