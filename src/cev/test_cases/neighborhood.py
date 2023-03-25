@@ -105,32 +105,32 @@ def downsample(data: pd.DataFrame, labels: list[str], frac: float = 0.5):
 
 
 def case1():
-    """Displacement"""
+    """Displace: Red"""
     data = generate_data()
     return data, translate(data, labels=["A"], offset=(6.5, 0))
 
 
 def case2():
-    """Local rotation"""
+    """Rotate: Red's Neighbors"""
     data = generate_data()
     return data, rotate(data, labels=["B", "C", "D", "E"])
 
 
 def case3():
-    """Global rotation"""
+    """Rotate: All but Red"""
     data = generate_data()
     return data, rotate(data, labels=["B", "C", "D", "E", "F", "G", "H", "I"])
 
 
 def case4a(frac: float = 0.1):
-    """Composition change: relative decrease"""
+    """Decrease: Red"""
     a = generate_data(neighborhood_offset=None)
     b = downsample(generate_data(neighborhood_offset=None), labels=["A"], frac=frac)
     return a, b
 
 
 def case4b(frac: float = 0.1):
-    """Composition change: relative increase"""
+    """Increase: Red"""
     a = generate_data(neighborhood_offset=None)
     b = downsample(
         generate_data(neighborhood_offset=None), labels=list("BCDE"), frac=frac
@@ -139,35 +139,35 @@ def case4b(frac: float = 0.1):
 
 
 def case5a(label: str = "D"):
-    """Neighborhood change: remove neighbor"""
+    """Remove: Sky-Blue"""
     a = generate_data()
     b = generate_data()
     return a, b[b.label != label].reset_index()
 
 
 def case5b():
-    """Neighborhood change: swap D <-> G"""
+    """Swap: Sky-Blue <> Bordeaux"""
     a = generate_data()
     b = swap_labels(generate_data(), swap=("D", "G"))
     return a, b
 
 
 def case5c():
-    """Neighborhood change: swap D <-> F"""
+    """Swap: Purple <> Bordeaux"""
     a = generate_data()
-    b = swap_labels(generate_data(), swap=("D", "G"))
+    b = swap_labels(generate_data(), swap=("B", "G"))
     return a, b
 
 
 def case5d():
-    """Neighborhood change: swap C <-> I"""
+    """Swap Green <> Teal"""
     a = generate_data()
     b = swap_labels(generate_data(), swap=("C", "I"))
     return a, b
 
 
 def case5e():
-    """Neighborhood change: dominant neighbor"""
+    """Dominant Neighbor: Yellow"""
 
     @dataframe
     def _generate_data(
@@ -186,22 +186,22 @@ def case5e():
 
 
 def case6a():
-    """A confused with D"""
+    """Confuse: Yellow <> Sky-Blue"""
     return confusion.case1(), confusion.case2()
 
 
 def case6b():
-    """A confused with D (D spread)"""
+    """Confuse: Yellow <> Sky-Blue (+ Spread)"""
     return confusion.case1(), confusion.case3()
 
 
 def case6c():
-    """A confused with D (A & D spread)"""
+    """Confuse + Spread: Yellow <> Sky-Blue"""
     return confusion.case1(), confusion.case4()
 
 
 def case6d():
-    """A missing; various size groups"""
+    """Remove: Yellow | Resize All"""
     return confusion.case1(), confusion.case5()
 
 
@@ -215,7 +215,7 @@ def plot_neighborhood(
     name: str | None = None,
 ):
     fig, axs = plt.subplots(
-        nrows=2, ncols=len(metrics) + 1, figsize=(12, 3), sharex=True, sharey=True
+        nrows=2, ncols=len(metrics) + 1, figsize=((len(metrics) + 1) * 3, 3), sharex=True, sharey=True
     )
     if name:
         axs[0, 0].set_title(name, fontsize="medium", loc="left")

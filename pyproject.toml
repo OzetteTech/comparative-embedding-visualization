@@ -30,6 +30,11 @@ dependencies = [
     "traittypes",
     "umap-learn",
     "scipy",
+    "anywidget",
+    "libpysal", # For Delaunay
+    "networkx", # For Delaunay
+    "shapely", # For Delaunay
+    "geopandas", # For Delaunay
 ]
 dynamic = ["version"]
 
