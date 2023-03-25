@@ -215,7 +215,11 @@ def plot_neighborhood(
     name: str | None = None,
 ):
     fig, axs = plt.subplots(
-        nrows=2, ncols=len(metrics) + 1, figsize=((len(metrics) + 1) * 3, 3), sharex=True, sharey=True
+        nrows=2,
+        ncols=len(metrics) + 1,
+        figsize=((len(metrics) + 1) * 3, 3),
+        sharex=True,
+        sharey=True,
     )
     if name:
         axs[0, 0].set_title(name, fontsize="medium", loc="left")

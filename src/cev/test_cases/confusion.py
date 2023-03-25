@@ -114,7 +114,9 @@ def case5(x: float = 3, cov: Covariance2D = ((0.5, 0), (0, 0.5))):
 
 
 def plot_confusion(df: pd.DataFrame, metrics):
-    fig, (ax0, *axs) = plt.subplots(nrows=1, ncols=len(metrics) + 1, figsize=((len(metrics) + 1) * 3, 2))
+    fig, (ax0, *axs) = plt.subplots(
+        nrows=1, ncols=len(metrics) + 1, figsize=((len(metrics) + 1) * 3, 2)
+    )
 
     ax0.tick_params(
         left=False, right=False, labelleft=False, labelbottom=False, bottom=False
