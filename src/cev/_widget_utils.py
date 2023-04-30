@@ -1,11 +1,43 @@
 from __future__ import annotations
 
-import traitlets
+import dataclasses
+import itertools
+import re
+import typing
 
+import ipywidgets
+import numpy as np
+import pandas as pd
+import traitlets
+from jscatter.color_maps import glasbey_dark
+
+if typing.TYPE_CHECKING:
+    import numpy.typing as npt
+
+    from .widgets import EmbeddingWidgetCollection
+
+NON_ROBUST_LABEL = "0_0_0_0_0"
 _ERR_MESSAGE = (
     "The truth value of an array with more than one element is ambiguous. "
     + "Use a.any() or a.all()"
 )
+
+
+@dataclasses.dataclass
+class Marker:
+    name: str
+    annotation: typing.Literal["+", "-"]
+
+    def __str__(self) -> str:
+        return self.name + self.annotation
+
+
+def parse_label(label: str) -> list[Marker]:
+    return [
+        Marker(inner_label[:-1], inner_label[-1])
+        for inner_label in re.split("(\w+[\-|\+])", label)
+        if inner_label
+    ]
 
 
 # patched version which allows for numpy comparison
@@ -24,6 +56,34 @@ class link_widgets(traitlets.link):
         except ValueError as e:
             if e.args[0] != _ERR_MESSAGE:
                 raise e
+
+
+def add_ilocs_trait(
+    widget: traitlets.HasTraits,
+    right: EmbeddingWidgetCollection,
+    left: EmbeddingWidgetCollection,
+):
+    """Adds a `.ilocs` tuple trait to the final widget.
+
+    Containts the (left, right) selections.
+    """
+    initial = (
+        left.categorial_scatter.selection(),
+        right.categorial_scatter.selection(),
+    )
+    widget.add_traits(ilocs=traitlets.Tuple(initial))
+
+    ipywidgets.dlink(
+        source=(left.categorial_scatter.widget, "selection"),
+        target=(widget, "ilocs"),
+        transform=lambda iloc: (iloc, widget.ilocs[1]),  # type: ignore
+    )
+
+    ipywidgets.dlink(
+        source=(right.categorial_scatter.widget, "selection"),
+        target=(widget, "ilocs"),
+        transform=lambda iloc: (widget.ilocs[0], iloc),  # type: ignore
+    )
 
 
 diverging_cmap = [
@@ -284,3 +344,50 @@ diverging_cmap = [
     "#fe5123",
     "#ff5023",
 ]
+
+
+def robust_labels(labels: npt.ArrayLike, robust: npt.NDArray[np.bool_] | None = None):
+    if robust is not None:
+        labels = np.where(
+            robust,
+            labels,
+            NON_ROBUST_LABEL,
+        )
+    return pd.Series(labels, dtype="category")
+
+
+@typing.overload
+def create_colormaps(cats: typing.Iterable[str]) -> dict:
+    ...
+
+
+@typing.overload
+def create_colormaps(
+    cats: typing.Iterable[str], *other: typing.Iterable[str]
+) -> tuple[dict, ...]:
+    ...
+
+
+def create_colormaps(
+    cats: typing.Iterable[str], *others: typing.Iterable[str]
+) -> dict | tuple[dict, ...]:
+    all_categories = set(cats)
+    for other in others:
+        all_categories.update(other)
+
+    # create unified colormap
+    lookup = dict(
+        zip(
+            all_categories,
+            itertools.cycle(glasbey_dark[1:]),
+        )
+    )
+
+    # force non-robust to be grey
+    lookup[NON_ROBUST_LABEL] = "#333333"
+
+    # create separate colormaps for each component
+    cmaps = tuple({c: lookup[c] for c in cmp} for cmp in (cats, *others))
+    if len(cmaps) == 1:
+        return cmaps[0]
+    return cmaps
