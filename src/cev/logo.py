@@ -103,35 +103,6 @@ class HTMLWidget(ipywidgets.Output):
             IPython.display.display(IPython.display.HTML(html))
 
 
-class LogoHTML(HTMLWidget):
-    # fmt: off
-    _template = jinja2.Template("""
-    <style>
-        .annotation-logo {
-            // background-color: #e6ffec;
-            padding-right: 0;
-            height: unset;
-        }
-    </style>
-    <div id="{{ id }}" class="annotation-logo"></div>
-    <script type="module">
-    """ + (here / "static" / "AnnotationLogo.js").read_text() + """
-        let counts = JSON.parse(`{{ counts | tojson }}`);
-        let options = JSON.parse(`{{ options | tojson }}`);
-        if (counts.length > 0) {
-            document.getElementById("{{ id }}")?.appendChild(
-                AnnotationLogo(counts, { threshold: {{ threshold }}, ...options })
-            );
-        }
-    </script>
-    """)
-    # fmt: on
-
-    counts = traitlets.List(traitlets.Dict())
-    options = traitlets.Dict()
-    threshold = traitlets.Int()
-
-
 class ConsensusLogo(HTMLWidget):
     # fmt: off
     _template = jinja2.Template("""

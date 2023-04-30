@@ -21,20 +21,16 @@ classifiers = [
 requires-python = ">=3.8,<3.11"
 dependencies = [
     "anywidget",
+    "cev-metrics"
     "ipywidgets>=8.0.0",
     "jinja2",
     "jupyter-scatter>=0.9.0",
     "matplotlib",
     "numba>=0.56.4",
     "pandas",
+    "scipy",
     "traittypes",
     "umap-learn",
-    "scipy",
-    "anywidget",
-    "libpysal", # For Delaunay
-    "networkx", # For Delaunay
-    "shapely", # For Delaunay
-    "geopandas", # For Delaunay
 ]
 dynamic = ["version"]
 
