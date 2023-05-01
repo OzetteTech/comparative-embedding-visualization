@@ -11,6 +11,11 @@ if typing.TYPE_CHECKING:
     from cev._embedding_widget import EmbeddingWidgetCollection
 
 
+# TODO: add a "metric" dropdown to the compare widget
+def _count_first() -> typing.Any:
+    raise NotImplementedError
+
+
 def create_metric_dropdown(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,

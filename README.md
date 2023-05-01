@@ -11,7 +11,7 @@ pip install cev
 Create a virtual environment with all the required dependencies with `conda`:
 
 ```sh
-conda env create -n cev python=3.10
+conda env create -n cev python=3.11
 conda activate cev
 pip install -e ".[notebooks,dev]"
 ```

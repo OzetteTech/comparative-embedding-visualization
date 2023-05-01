@@ -18,17 +18,15 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
 ]
-requires-python = ">=3.8,<3.11"
+requires-python = ">=3.8"
 dependencies = [
-    "anywidget",
+    "anywidget>=0.2.3",
     "cev-metrics",
     "ipywidgets>=8.0.0",
-    "jinja2",
+    "jinja2>=3.0.0",
     "jupyter-scatter>=0.9.0",
-    "matplotlib",
-    "pandas",
-    "scipy",
-    "umap-learn",
+    "pandas>=1.0,<2.0",
+    "scipy>=1.10.1",
 ]
 dynamic = ["version"]
 
@@ -45,7 +43,8 @@ notebooks = [
     "snakemake",
     "seaborn",
     "pyarrow",
-    "fastparquet"
+    "fastparquet",
+    "matplotlib",
 ]
 
 [project.urls]
@@ -58,7 +57,6 @@ sources = ["src"]
 source = "vcs"
 
 [tool.hatch.envs.default]
-python = "3.10"
 features = ["dev", "notebooks"]
 
 [tool.hatch.envs.default.scripts]
@@ -73,7 +71,7 @@ check = [
 test = "pytest --color=yes"
 
 [[tool.hatch.envs.test.matrix]]
-python = ["38", "39", "310"]
+python = ["38", "39", "310", "311"]
 
 [tool.ruff]
 line-length = 88
