@@ -52,34 +52,47 @@ def rowise_cosine_similarity(X0: npt.ArrayLike, X1: npt.ArrayLike):
 
 
 def transform_abundance(
-    label_representation: pd.DataFrame,
+    frequencies: pd.DataFrame,
     abundances: dict[str, int],
     force_include_self: bool = True,
+    bit_mask: bool = False,
 ):
-    """
-    Creates an abundance-based representation.
+    """Creates an abundance-based representation.
 
     This function transforms a label-level neighborhood representation
-    into an abundance-based representation by replacing the non-zero
-    elements with the abundances.
+    into an abundance-based representation by multiplying the frequencies
+    with the abundances. Alternatively, a bitmask can be used to treat
+    all non-zero frequencies as 1.
 
     Parameters
     ----------
-    label_representation : label-level neighborhood representation (e.g., result of `count_first`)
-    abundances : label abundances
-    force_include_self: force include self abundance even if missing from lable-level representaion.
+    frequencies : pd.DataFrame
+        A symmetric DataFrame with shared rows/cols.
+    abundances : dict[str, int]
+        A dictionary mapping labels to abundances.
+    force_include_self : bool, optional
+        Whether to include the label itself in the neighborhood, by default True.
+    bit_mask : bool, optional
+        Whether to use a bit mask instead of the frequencies when expanding
+        abundances, by default False.
     """
     assert (
-        label_representation.index.to_list() == label_representation.columns.to_list()
+        frequencies.index.to_list() == frequencies.columns.to_list()
     ), "must be a symmetric DataFrame with shared rows/cols"
 
-    mask = label_representation.to_numpy() > 0
-    if force_include_self:
-        np.fill_diagonal(mask, True)
+    if bit_mask:
+        mask = frequencies.to_numpy() > 0
+        if force_include_self:
+            np.fill_diagonal(mask, True)
+    else:
+        mask = frequencies.to_numpy()
+        if force_include_self:
+            np.fill_diagonal(mask, 1.0)
+
     return pd.DataFrame(
-        mask * np.array([abundances[col] for col in label_representation.columns]),
-        columns=label_representation.columns,
-        index=label_representation.index,
+        mask * np.array([abundances[col] for col in frequencies.columns]),
+        columns=frequencies.columns,
+        index=frequencies.index,
     )
 
 
