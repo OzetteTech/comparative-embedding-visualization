@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import typing
 
 import ipywidgets
@@ -22,12 +23,16 @@ def create_selection_type_dropdown(
 
     def independent():
         nonlocal unlink
-        unlink()
+
+        with contextlib.suppress(ValueError):
+            unlink()
 
     # requires point-point correspondence
     def sync():
         nonlocal unlink
-        unlink()
+
+        with contextlib.suppress(ValueError):
+            unlink()
 
         unlink = link_widgets(
             (left.categorial_scatter.widget, "selection"),
@@ -37,7 +42,9 @@ def create_selection_type_dropdown(
     # requires label-label correspondence
     def phenotype():
         nonlocal unlink
-        unlink()
+
+        with contextlib.suppress(ValueError):
+            unlink()
 
         def expand_phenotype(src: EmbeddingWidgetCollection):
             def handler(change):
@@ -84,5 +91,5 @@ def create_selection_type_dropdown(
     )
 
     selection_type.observe(lambda change: change.new(), names="value")  # type: ignore
-    selection_type.value()
+    initial_selection()
     return selection_type
