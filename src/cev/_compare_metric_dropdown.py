@@ -29,7 +29,6 @@ def create_metric_dropdown(
 
     def neighborhood():
         dist = metrics.compare_neighborhoods(left._data, right._data)
-        print(dist)
         return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
     def abundance():
