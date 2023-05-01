@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typing
 
+import cev_metrics
 import numpy as np
 import numpy.linalg as nplg
 import pandas as pd
@@ -19,24 +20,24 @@ __all__ = [
 ]
 
 
+def confusion(df: pd.DataFrame):
+    cats = df["label"].cat.categories
+    mat = pd.DataFrame(cev_metrics.confusion(df), index=cats, columns=cats)
+    normed = (mat / mat.sum(axis=1)).to_numpy()
+    return pd.Series(1 - normed.diagonal(), index=mat.index, name="confusion")
+
+
+def neighborhood(df: pd.DataFrame):
+    cats = df["label"].cat.categories
+    mat = pd.DataFrame(cev_metrics.neighborhood(df), index=cats, columns=cats)
+
+    normed = (mat / mat.sum(axis=1)).to_numpy()
+    return pd.Series(1 - normed.diagonal(), index=mat.index, name="neighborhood")
+
+
 def rowise_cosine_similarity(X0: npt.ArrayLike, X1: npt.ArrayLike):
     """Computes the cosine similary per row of two equally shaped 2D matrices."""
     return np.sum(X0 * X1, axis=1) / (nplg.norm(X0, axis=1) * nplg.norm(X1, axis=1))
-
-
-def confusion(df: pd.DataFrame, py: bool = False):
-    if py:
-        import cev_metrics.py
-
-        mat = cev_metrics.py.confusion(df, counts=True)
-    else:
-        import cev_metrics
-
-        cats = df["label"].cat.categories
-        mat = pd.DataFrame(cev_metrics.confusion(df), index=cats, columns=cats)
-
-    normed = (mat / mat.sum(axis=1)).to_numpy()
-    return pd.Series(1 - normed.diagonal(), index=mat.index, name="confusion")
 
 
 def transform_abundance(
