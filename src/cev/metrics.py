@@ -4,10 +4,10 @@ import typing
 
 import numpy as np
 import numpy.linalg as nplg
+import pandas as pd
 
 if typing.TYPE_CHECKING:
     import numpy.typing as npt
-    import pandas as pd
 
 __all__ = [
     "rowise_cosine_similarity",

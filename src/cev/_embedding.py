@@ -3,24 +3,21 @@ from __future__ import annotations
 import dataclasses
 import typing
 
+import pandas as pd
+
 from cev._widget_utils import parse_label
 
 if typing.TYPE_CHECKING:
     import numpy as np
     import numpy.typing as npt
-    import pandas as pd
-
-Coordinates = npt.ArrayLike
-Labels = pd.Series
-Distances = npt.NDArray[np.float_]
 
 NON_ROBUST_LABEL = "0_0_0_0_0"
 
 
 @dataclasses.dataclass
 class Embedding:
-    coords: Coordinates
-    labels: Labels
+    coords: npt.ArrayLike
+    labels: pd.Series
     robust: npt.NDArray[np.bool_] | None = None
 
     @classmethod

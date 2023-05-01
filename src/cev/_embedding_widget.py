@@ -92,7 +92,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         )
 
         return cls(
-            labels=emb.update_dist_callback,
+            labels=emb.labels,
             categorial_scatter=categorial_scatter,
             metric_scatter=metric_scatter,
             logo=MarkerCompositionLogo(),
