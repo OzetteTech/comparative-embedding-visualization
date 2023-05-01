@@ -58,6 +58,7 @@ def create_metric_dropdown(
         description="metric: ",
     )
 
+
 def create_update_distance_callback(
     metric_dropdown: ipywidgets.Dropdown,
     left: EmbeddingWidgetCollection,
@@ -97,4 +98,3 @@ def create_update_distance_callback(
 
     metric_dropdown.observe(lambda _: callback(), names="value")
     return callback
-

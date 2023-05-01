@@ -69,6 +69,7 @@ def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
         )
     )
 
+
 def create_invert_color_checkbox(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,

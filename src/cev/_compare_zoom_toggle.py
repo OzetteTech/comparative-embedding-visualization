@@ -5,6 +5,7 @@ import ipywidgets
 if typing.TYPE_CHECKING:
     from ._embedding_widget import EmbeddingWidgetCollection
 
+
 def create_zoom_toggle(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,

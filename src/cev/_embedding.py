@@ -41,6 +41,7 @@ class Embedding:
 
         return EmbeddingWidgetCollection.from_embedding(self)
 
+
 def _prepare_ozette(df: pd.DataFrame, robust_only: bool = True):
     # ISMB data
     if "cellType" in df.columns:
