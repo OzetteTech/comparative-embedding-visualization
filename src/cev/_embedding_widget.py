@@ -33,7 +33,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self.metric_scatter = metric_scatter
         self.logo = logo
         self._labeler = labeler
-        self.metric_color_options = (
+        self.metric_color_options: tuple[str, str, list[int], tuple] = (
             "viridis",
             "viridis_r",
             [0, 1],
@@ -92,7 +92,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         )
 
         return cls(
-            labels=emb.labels,
+            labels=emb.update_dist_callback,
             categorial_scatter=categorial_scatter,
             metric_scatter=metric_scatter,
             logo=MarkerCompositionLogo(),
