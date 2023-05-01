@@ -13,6 +13,7 @@ if typing.TYPE_CHECKING:
 __all__ = [
     "rowise_cosine_similarity",
     "confusion",
+    "compare_neighborhoods",
     "transform_abundance",
     "merge_abundances_left",
     "relative_abundance",
@@ -20,19 +21,28 @@ __all__ = [
 ]
 
 
-def confusion(df: pd.DataFrame):
+def confusion(df: pd.DataFrame) -> pd.Series:
     cats = df["label"].cat.categories
     mat = pd.DataFrame(cev_metrics.confusion(df), index=cats, columns=cats)
     normed = (mat / mat.sum(axis=1)).to_numpy()
     return pd.Series(1 - normed.diagonal(), index=mat.index, name="confusion")
 
 
-def neighborhood(df: pd.DataFrame):
+def neighborhood(df: pd.DataFrame) -> pd.DataFrame:
     cats = df["label"].cat.categories
-    mat = pd.DataFrame(cev_metrics.neighborhood(df), index=cats, columns=cats)
+    neighborhood_scores = cev_metrics.neighborhood(df)
+    np.fill_diagonal(neighborhood_scores, 1)
+    return pd.DataFrame(neighborhood_scores, index=cats, columns=cats)
 
-    normed = (mat / mat.sum(axis=1)).to_numpy()
-    return pd.Series(1 - normed.diagonal(), index=mat.index, name="neighborhood")
+
+def compare_neighborhoods(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[str, float]:
+    ma = neighborhood(df1)
+    mb = neighborhood(df2)
+    overlap = ma.index.intersection(mb.index)
+    dist = {label: 0.0 for label in typing.cast(pd.Series, ma.index.union(mb.index))}
+    sim = rowise_cosine_similarity(ma.loc[overlap, overlap], mb.loc[overlap, overlap])
+    dist.update(sim)
+    return dist
 
 
 def rowise_cosine_similarity(X0: npt.ArrayLike, X1: npt.ArrayLike):
