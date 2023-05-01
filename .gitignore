@@ -7,3 +7,4 @@ data/
 src/cev/_version.py
 .vite
 dist/
+mair/
