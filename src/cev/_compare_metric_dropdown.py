@@ -11,11 +11,6 @@ if typing.TYPE_CHECKING:
     from cev._embedding_widget import EmbeddingWidgetCollection
 
 
-# TODO: add a "metric" dropdown to the compare widget
-def _count_first() -> typing.Any:
-    raise NotImplementedError
-
-
 def create_metric_dropdown(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,
@@ -32,12 +27,14 @@ def create_metric_dropdown(
         return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
     def abundance():
-        counts = _count_first()
+        frequencies = metrics.neighborhood(left._data), metrics.neighborhood(
+            right._data
+        )
         abundances = [
             metrics.transform_abundance(
                 rep, abundances=emb.labels.value_counts().to_dict()
             )
-            for rep, emb in zip(counts, (left, right))
+            for rep, emb in zip(frequencies, (left, right))
         ]
         merged = [
             metrics.merge_abundances_left(abundances[0], abundances[1]),

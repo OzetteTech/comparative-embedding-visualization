@@ -11,13 +11,14 @@ if typing.TYPE_CHECKING:
     import numpy.typing as npt
 
 __all__ = [
-    "rowise_cosine_similarity",
-    "confusion",
-    "compare_neighborhoods",
-    "transform_abundance",
-    "merge_abundances_left",
-    "relative_abundance",
     "centered_logratio",
+    "compare_neighborhoods",
+    "confusion",
+    "merge_abundances_left",
+    "neighborhood",
+    "relative_abundance",
+    "rowise_cosine_similarity",
+    "transform_abundance",
 ]
 
 
