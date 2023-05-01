@@ -28,13 +28,7 @@ def create_metric_dropdown(
         return _confusion(left), _confusion(right)
 
     def neighborhood():
-        ma, mb = _count_first()
-        overlap = ma.index.intersection(mb.index)
-        dist = {label: 0 for label in ma.index.union(mb.index)}
-        sim = metrics.rowise_cosine_similarity(
-            ma.loc[overlap, overlap], mb.loc[overlap, overlap]
-        )
-        dist.update(sim)
+        dist = metrics.compare_neighborhoods(left._data, right._data)
         return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
     def abundance():

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import typing
 
+import cev_metrics
 import numpy as np
 import numpy.linalg as nplg
 import pandas as pd
@@ -12,6 +13,7 @@ if typing.TYPE_CHECKING:
 __all__ = [
     "rowise_cosine_similarity",
     "confusion",
+    "compare_neighborhoods",
     "transform_abundance",
     "merge_abundances_left",
     "relative_abundance",
@@ -19,24 +21,33 @@ __all__ = [
 ]
 
 
+def confusion(df: pd.DataFrame) -> pd.Series:
+    cats = df["label"].cat.categories
+    mat = pd.DataFrame(cev_metrics.confusion(df), index=cats, columns=cats)
+    normed = (mat / mat.sum(axis=1)).to_numpy()
+    return pd.Series(1 - normed.diagonal(), index=mat.index, name="confusion")
+
+
+def neighborhood(df: pd.DataFrame) -> pd.DataFrame:
+    cats = df["label"].cat.categories
+    neighborhood_scores = cev_metrics.neighborhood(df)
+    np.fill_diagonal(neighborhood_scores, 1)
+    return pd.DataFrame(neighborhood_scores, index=cats, columns=cats)
+
+
+def compare_neighborhoods(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[str, float]:
+    ma = neighborhood(df1)
+    mb = neighborhood(df2)
+    overlap = ma.index.intersection(mb.index)
+    dist = {label: 0.0 for label in typing.cast(pd.Series, ma.index.union(mb.index))}
+    sim = rowise_cosine_similarity(ma.loc[overlap, overlap], mb.loc[overlap, overlap])
+    dist.update(sim)
+    return dist
+
+
 def rowise_cosine_similarity(X0: npt.ArrayLike, X1: npt.ArrayLike):
     """Computes the cosine similary per row of two equally shaped 2D matrices."""
     return np.sum(X0 * X1, axis=1) / (nplg.norm(X0, axis=1) * nplg.norm(X1, axis=1))
-
-
-def confusion(df: pd.DataFrame, py: bool = False):
-    if py:
-        import cev_metrics.py
-
-        mat = cev_metrics.py.confusion(df, counts=True)
-    else:
-        import cev_metrics
-
-        cats = df["label"].cat.categories
-        mat = pd.DataFrame(cev_metrics.confusion(df), index=cats, columns=cats)
-
-    normed = (mat / mat.sum(axis=1)).to_numpy()
-    return pd.Series(1 - normed.diagonal(), index=mat.index, name="confusion")
 
 
 def transform_abundance(
