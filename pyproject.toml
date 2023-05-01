@@ -26,10 +26,8 @@ dependencies = [
     "jinja2",
     "jupyter-scatter>=0.9.0",
     "matplotlib",
-    "numba>=0.56.4",
     "pandas",
     "scipy",
-    "traittypes",
     "umap-learn",
 ]
 dynamic = ["version"]
