@@ -23,6 +23,28 @@ _ERR_MESSAGE = (
 )
 
 
+# patched version which allows for numpy comparison
+# https://github.com/jupyter-widgets/traittypes/issues/45
+class link_widgets(traitlets.link):
+    def _update_target(self, change):
+        try:
+            super()._update_target(change)
+        except ValueError as e:
+            if e.args[0] != _ERR_MESSAGE:
+                raise e
+        except traitlets.TraitError:
+            pass
+
+    def _update_source(self, change):
+        try:
+            super()._update_source(change)
+        except ValueError as e:
+            if e.args[0] != _ERR_MESSAGE:
+                raise e
+        except traitlets.TraitError:
+            pass
+
+
 @dataclasses.dataclass
 class Marker:
     name: str
@@ -40,22 +62,14 @@ def parse_label(label: str) -> list[Marker]:
     ]
 
 
-# patched version which allows for numpy comparison
-# https://github.com/jupyter-widgets/traittypes/issues/45
-class link_widgets(traitlets.link):
-    def _update_target(self, change):
-        try:
-            super()._update_target(change)
-        except ValueError as e:
-            if e.args[0] != _ERR_MESSAGE:
-                raise e
-
-    def _update_source(self, change):
-        try:
-            super()._update_source(change)
-        except ValueError as e:
-            if e.args[0] != _ERR_MESSAGE:
-                raise e
+def trim_label_series(labels: pd.Series, level: int):
+    if level == 0:
+        return labels
+    return (
+        labels.str.split("(\w+[\+|\-])", regex=True)
+        .str.slice(0, -level * 2)
+        .str.join("")
+    )
 
 
 def add_ilocs_trait(

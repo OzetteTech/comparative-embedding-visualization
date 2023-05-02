@@ -23,17 +23,21 @@ __all__ = [
 
 
 def confusion(df: pd.DataFrame) -> pd.Series:
-    cats = df["label"].cat.categories
-    mat = pd.DataFrame(cev_metrics.confusion(df), index=cats, columns=cats)
-    normed = (mat / mat.sum(axis=1)).to_numpy()
-    return pd.Series(1 - normed.diagonal(), index=mat.index, name="confusion")
+    confusion_matrix = cev_metrics.confusion(df)
+    normed = confusion_matrix / confusion_matrix.sum(axis=1)
+    data = pd.Series(1 - normed.diagonal(), index=df["label"].cat.categories)
+    # TODO: move to cev-metrics
+    # Replace any label with 2 or less count with 0.0 confusion.
+    counts = df["label"].value_counts()
+    data.loc[counts[counts <= 2].index] = 0
+    return data
 
 
 def neighborhood(df: pd.DataFrame) -> pd.DataFrame:
-    cats = df["label"].cat.categories
+    categories = df["label"].cat.categories
     neighborhood_scores = cev_metrics.neighborhood(df)
     np.fill_diagonal(neighborhood_scores, 1)
-    return pd.DataFrame(neighborhood_scores, index=cats, columns=cats)
+    return pd.DataFrame(neighborhood_scores, index=categories, columns=categories)
 
 
 def compare_neighborhoods(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[str, float]:

@@ -11,11 +11,12 @@ from cev._compare_metric_dropdown import (
 )
 from cev._compare_selection_type_dropdown import create_selection_type_dropdown
 from cev._compare_zoom_toggle import create_zoom_toggle
-from cev._label_utils import parse_label, trim_label_series
 from cev._widget_utils import (
     add_ilocs_trait,
     create_colormaps,
     link_widgets,
+    parse_label,
+    trim_label_series,
 )
 from cev.components import MarkerSelectionIndicator
 
