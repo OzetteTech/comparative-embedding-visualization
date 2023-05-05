@@ -8,3 +8,4 @@ src/cev/_version.py
 .vite
 dist/
 mair/
+.DS_Store

@@ -9,6 +9,8 @@ import numpy.typing as npt
 import pandas as pd
 import traitlets
 
+from uuid import uuid4
+
 from cev._embedding import Embedding
 from cev._widget_utils import create_colormaps, link_widgets, robust_labels
 from cev.components import MarkerCompositionLogo
@@ -79,7 +81,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
                 y="y",
                 background_color=background_color,
                 axes=axes,
-                opacity_unselected=opacity_unselected,
+                opacity_by='density',
                 lasso_initiator=False,
                 **kwargs,
             )
@@ -155,6 +157,8 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     def show(self, row_height: int | None = None, **kwargs):
         widgets = []
+        
+        uuid = uuid4().hex
 
         for scatter in self.scatters:
             if row_height is not None:
@@ -162,10 +166,17 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             widget = scatter.show()
             widget.layout = {"margin": "0 0 2px 0"}
             widgets.append(widget)
+            scatter.widget.view_sync = uuid
 
         widgets.append(self.logo)
 
         return ipywidgets.VBox(widgets, **kwargs)
+
+    def zoom(self, to: None | npt.NDArray = None):
+        if to is not None:
+            to = to if len(to) > 0 else None
+        for s in self.scatters:
+            s.zoom(to=to)
 
     def zoom(self, to: None | npt.NDArray = None):
         if to is not None:

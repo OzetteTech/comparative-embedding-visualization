@@ -24,7 +24,6 @@ if typing.TYPE_CHECKING:
     from cev._embedding import Embedding
     from cev._embedding_widget import EmbeddingWidgetCollection
 
-
 def compare(a: Embedding, b: Embedding, row_height: int = 250, **kwargs):
     pointwise_correspondence = has_pointwise_correspondence(a, b)
     left, right = a.widgets(**kwargs), b.widgets(**kwargs)
@@ -76,8 +75,9 @@ def has_pointwise_correspondence(a: Embedding, b: Embedding) -> bool:
 def create_invert_color_checkbox(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,
+    default: bool = False,
 ):
-    inverted = ipywidgets.Checkbox(False, description="invert colormap")
+    inverted = ipywidgets.Checkbox(default, description="Invert Colormap")
     link_widgets((left, "inverted"), (inverted, "value"))
     link_widgets((right, "inverted"), (inverted, "value"))
     return inverted

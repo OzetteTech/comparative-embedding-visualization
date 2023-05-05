@@ -14,6 +14,7 @@ if typing.TYPE_CHECKING:
 def create_metric_dropdown(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,
+    default: str | None = 'confusion',
 ):
     def _confusion(emb: EmbeddingWidgetCollection):
         label_confusion = metrics.confusion(emb._data)
@@ -45,15 +46,21 @@ def create_metric_dropdown(
             left.labels.map(label_dista - label_distb).astype(float),
             right.labels.map(label_distb - label_dista).astype(float),
         )
+    
+    default_value = confusion
+    if default == 'neighborhood':
+        default_value = neighborhood
+    elif default == 'abundance':
+        default_value = abundance
 
     return ipywidgets.Dropdown(
         options=[
-            ("confusion", confusion),
-            ("neighborhood", neighborhood),
-            ("abundance", abundance),
+            ("Confusion", confusion),
+            ("Neighborhood", neighborhood),
+            ("Abundance", abundance),
         ],
-        value=confusion,
-        description="metric: ",
+        value=default_value,
+        description="Metric",
     )
 
 
@@ -65,34 +72,36 @@ def create_update_distance_callback(
     def callback():
         distances = metric_dropdown.value()
         for dist, emb in zip(distances, (left, right)):
-            if metric_dropdown.label == "abundance":
+            if metric_dropdown.label == "Abundance":
                 vmax = max(abs(dist.min()), abs(dist.max()), 3)
                 emb.metric_color_options = (
-                    diverging_cmap[::-1],
                     diverging_cmap,
+                    diverging_cmap[::-1],
                     [-vmax, vmax],
-                    ("low", "high", "abundance"),
+                    ("Low", "High", "Abundance"),
                 )
-            elif metric_dropdown.label == "confusion":
+            elif metric_dropdown.label == "Confusion":
                 emb.metric_color_options = (
                     "viridis",
                     "viridis_r",
                     [0, 1],
-                    ("least", "most", "confusion"),
+                    ("Least", "Most", "Confusion"),
                 )
-            elif metric_dropdown.label == "neighborhood":
+            elif metric_dropdown.label == "Neighborhood":
                 emb.metric_color_options = (
                     "viridis",
                     "viridis_r",
                     [0, 1],
-                    ("least", "most", "similarity"),
+                    ("Least", "Most", "Similarity"),
                 )
             else:
                 raise ValueError(
-                    f"color options unspecified for metric, {metric_dropdown.value.__name__}"
+                    f"color options unspecified for metric '{metric_dropdown.value.__name__}'"
                 )
 
             emb.distances = dist
 
     metric_dropdown.observe(lambda _: callback(), names="value")
+    callback()
+    
     return callback
