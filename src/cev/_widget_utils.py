@@ -62,14 +62,14 @@ def parse_label(label: str) -> list[Marker]:
     ]
 
 
-def trim_label_series(labels: pd.Series, level: int):
-    if level == 0:
-        return labels
-    return (
-        labels.str.split("(\w+[\+|\-])", regex=True)
-        .str.slice(0, -level * 2)
-        .str.join("")
-    )
+def trim_label_series(labels: pd.Series, active_markers: typing.Set(str)):
+    splitted_labels = [marker for marker in labels.str.split("(\w+[\+|\-])", regex=True)]
+    
+    out = []
+    for splitted_label in splitted_labels:
+        out.append("".join([marker for marker in splitted_label if marker[0:-1] in active_markers]))
+        
+    return out
 
 
 def add_ilocs_trait(

@@ -13,7 +13,7 @@ from cev._compare_metric_dropdown import (
 from cev._compare_selection_type_dropdown import create_selection_type_dropdown
 from cev._compare_zoom_toggle import create_zoom_toggle
 from cev._embedding import Embedding
-from cev._compare import has_pointwise_correspondence, create_invert_color_checkbox, connect_marker_level
+from cev._compare import has_pointwise_correspondence, create_invert_color_checkbox, connect_marker_selection
 from cev._widget_utils import add_ilocs_trait, parse_label
 
 
@@ -41,8 +41,10 @@ class EmbeddingComparisonWidget():
 
         # representative label
         markers = [m.name for m in parse_label(left_embedding.labels.iloc[0])]
-        self.marker_level = MarkerSelectionIndicator(markers=markers, value=len(markers))
-        self.marker_level.value = 1  # set the lowest marker_level
+        self.marker_selection = MarkerSelectionIndicator(
+            markers=markers,
+            active=[True] + [False for x in range(len(markers) - 1)]
+        )
         
         self.row_height = row_height
         self.metric = metric
@@ -86,8 +88,8 @@ class EmbeddingComparisonWidget():
             'phenotype' if phenotype_selection == True or self.phenotype_selection == True else 'independent'
         )
         
-        connect_marker_level(
-            self.marker_level,
+        connect_marker_selection(
+            self.marker_selection,
             (self.left_embedding, self.left),
             (self.right_embedding, self.right),
             update_distances
@@ -97,7 +99,7 @@ class EmbeddingComparisonWidget():
         sections = [
             ipywidgets.VBox(
                 [
-                    self.marker_level,
+                    self.marker_selection,
                     ipywidgets.HBox([metric_dropdown, inverted, selection_type, zoom]),
                 ]
             )

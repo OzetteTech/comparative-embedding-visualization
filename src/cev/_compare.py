@@ -83,23 +83,32 @@ def create_invert_color_checkbox(
     return inverted
 
 
-def connect_marker_level(
-    marker_level: MarkerSelectionIndicator,
+def connect_marker_selection(
+    marker_selection: MarkerSelectionIndicator,
     left_pair: tuple[Embedding, EmbeddingWidgetCollection],
     right_pair: tuple[Embedding, EmbeddingWidgetCollection],
     update_distances: typing.Callable,
 ):
-    markers = marker_level.markers
+    markers = marker_selection.markers
     a, left = left_pair
     b, right = right_pair
 
-    def on_label_level_change(change):
-        left.labels = trim_label_series(a.labels, len(markers) - change.new)
-        right.labels = trim_label_series(b.labels, len(markers) - change.new)
+    def update_labels(active):
+        active_markers = set([marker for i, marker in enumerate(markers) if active[i]])
+        
+        left.labels = trim_label_series(a.labels, active_markers)
+        right.labels = trim_label_series(b.labels, active_markers)
+        
         left.colormap, right.colormap = create_colormaps(
             left.robust_labels.cat.categories,
             right.robust_labels.cat.categories,
         )
+        
         update_distances()
 
-    marker_level.observe(on_label_level_change, names="value")
+    def on_active_marker_selection_change(change):
+        update_labels(change.new)
+        
+    update_labels(marker_selection.active)
+
+    marker_selection.observe(on_active_marker_selection_change, names="active")

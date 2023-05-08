@@ -28,11 +28,10 @@ def create_metric_dropdown(
         return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
     def abundance():
-        frequencies = metrics.neighborhood(left._data), metrics.neighborhood(
-            right._data
-        )
+        frequencies = metrics.neighborhood(left._data), metrics.neighborhood(right._data)
         abundances = [
             metrics.transform_abundance(
+                ## Fritz: Test if moving CLR here makes a difference
                 rep, abundances=emb.labels.value_counts().to_dict()
             )
             for rep, emb in zip(frequencies, (left, right))
