@@ -30,7 +30,7 @@ class EmbeddingComparisonWidget:
         inverted_colormap: bool = False,
         auto_zoom: bool = False,
         phenotype_selection: bool = False,
-        titles: [str, str] = [],
+        titles: tuple[str, str] | None = None,
         **kwargs,
     ):
         self.pointwise_correspondence = has_pointwise_correspondence(
@@ -107,7 +107,7 @@ class EmbeddingComparisonWidget:
             )
         ]
 
-        if len(self.titles):
+        if self.titles is not None:
             left_title, right_title = self.titles
             sections.append(
                 ipywidgets.HTML(
