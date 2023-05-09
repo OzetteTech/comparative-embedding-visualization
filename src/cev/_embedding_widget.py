@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from uuid import uuid4
 
 import ipywidgets
 import jscatter
@@ -8,8 +9,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import traitlets
-
-from uuid import uuid4
 
 from cev._embedding import Embedding
 from cev._widget_utils import create_colormaps, link_widgets, robust_labels
@@ -81,7 +80,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
                 y="y",
                 background_color=background_color,
                 axes=axes,
-                opacity_by='density',
+                opacity_by="density",
                 lasso_initiator=False,
                 **kwargs,
             )
@@ -157,7 +156,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     def show(self, row_height: int | None = None, **kwargs):
         widgets = []
-        
+
         uuid = uuid4().hex
 
         for scatter in self.scatters:
@@ -171,12 +170,6 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         widgets.append(self.logo)
 
         return ipywidgets.VBox(widgets, **kwargs)
-
-    def zoom(self, to: None | npt.NDArray = None):
-        if to is not None:
-            to = to if len(to) > 0 else None
-        for s in self.scatters:
-            s.zoom(to=to)
 
     def zoom(self, to: None | npt.NDArray = None):
         if to is not None:

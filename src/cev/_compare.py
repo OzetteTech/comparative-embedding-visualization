@@ -24,13 +24,16 @@ if typing.TYPE_CHECKING:
     from cev._embedding import Embedding
     from cev._embedding_widget import EmbeddingWidgetCollection
 
+
 def compare(a: Embedding, b: Embedding, row_height: int = 250, **kwargs):
     pointwise_correspondence = has_pointwise_correspondence(a, b)
     left, right = a.widgets(**kwargs), b.widgets(**kwargs)
 
     # representative label
     markers = [m.name for m in parse_label(a.labels.iloc[0])]
-    marker_level = MarkerSelectionIndicator(markers=markers, value=len(markers))
+    marker_selection = MarkerSelectionIndicator(
+        markers=markers, active=[True] + [False for x in range(len(markers) - 1)]
+    )
 
     metric_dropdown = create_metric_dropdown(left, right)
     update_distances = create_update_distance_callback(metric_dropdown, left, right)
@@ -39,10 +42,10 @@ def compare(a: Embedding, b: Embedding, row_height: int = 250, **kwargs):
     selection_type = create_selection_type_dropdown(
         left, right, pointwise_correspondence
     )
-    connect_marker_level(marker_level, (a, left), (b, right), update_distances)
+    connect_marker_selection(marker_selection, (a, left), (b, right), update_distances)
     header = ipywidgets.VBox(
         [
-            marker_level,
+            marker_selection,
             ipywidgets.HBox([selection_type, metric_dropdown, inverted, zoom]),
         ]
     )
@@ -57,7 +60,6 @@ def compare(a: Embedding, b: Embedding, row_height: int = 250, **kwargs):
     add_ilocs_trait(widget, left, right)
     typing.cast(typing.Any, widget).left = left
     typing.cast(typing.Any, widget).right = right
-    marker_level.value = 1  # set the lowest marker_level
     return widget
 
 
@@ -95,20 +97,20 @@ def connect_marker_selection(
 
     def update_labels(active):
         active_markers = set([marker for i, marker in enumerate(markers) if active[i]])
-        
+
         left.labels = trim_label_series(a.labels, active_markers)
         right.labels = trim_label_series(b.labels, active_markers)
-        
+
         left.colormap, right.colormap = create_colormaps(
             left.robust_labels.cat.categories,
             right.robust_labels.cat.categories,
         )
-        
+
         update_distances()
 
     def on_active_marker_selection_change(change):
         update_labels(change.new)
-        
+
     update_labels(marker_selection.active)
 
     marker_selection.observe(on_active_marker_selection_change, names="active")
