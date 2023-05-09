@@ -33,16 +33,18 @@ def confusion(df: pd.DataFrame) -> pd.Series:
     return data
 
 
-def neighborhood(df: pd.DataFrame) -> pd.DataFrame:
+def neighborhood(df: pd.DataFrame, max_depth: int = 1) -> pd.DataFrame:
     categories = df["label"].cat.categories
-    neighborhood_scores = cev_metrics.neighborhood(df)
+    neighborhood_scores = cev_metrics.neighborhood(df, max_depth)
     np.fill_diagonal(neighborhood_scores, 1)
     return pd.DataFrame(neighborhood_scores, index=categories, columns=categories)
 
 
-def compare_neighborhoods(df1: pd.DataFrame, df2: pd.DataFrame) -> dict[str, float]:
-    ma = neighborhood(df1)
-    mb = neighborhood(df2)
+def compare_neighborhoods(
+    df1: pd.DataFrame, df2: pd.DataFrame, max_depth: int = 1
+) -> dict[str, float]:
+    ma = neighborhood(df1, max_depth)
+    mb = neighborhood(df2, max_depth)
     overlap = ma.index.intersection(mb.index)
     dist = {label: 0.0 for label in typing.cast(pd.Series, ma.index.union(mb.index))}
     sim = rowise_cosine_similarity(ma.loc[overlap, overlap], mb.loc[overlap, overlap])
@@ -60,6 +62,7 @@ def transform_abundance(
     abundances: dict[str, int],
     force_include_self: bool = True,
     bit_mask: bool = False,
+    clr: bool = False,
 ):
     """Creates an abundance-based representation.
 
@@ -79,6 +82,9 @@ def transform_abundance(
     bit_mask : bool, optional
         Whether to use a bit mask instead of the frequencies when expanding
         abundances, by default False.
+    clr : bool, optional
+        Whether to normalize the count values by transforming them to centered
+        log ratios, by default False.
     """
     assert (
         frequencies.index.to_list() == frequencies.columns.to_list()
@@ -93,8 +99,17 @@ def transform_abundance(
         if force_include_self:
             np.fill_diagonal(mask, 1.0)
 
+    if clr:
+        import scipy
+
+        inflated_counts = np.fromiter(abundances.values(), dtype=int) + 1
+        gmean = scipy.stats.mstats.gmean(inflated_counts)
+        values = dict(zip(abundances.keys(), np.log10(inflated_counts / gmean)))
+    else:
+        values = abundances
+
     return pd.DataFrame(
-        mask * np.array([abundances[col] for col in frequencies.columns]),
+        mask * np.array([values[col] for col in frequencies.columns]),
         columns=frequencies.columns,
         index=frequencies.index,
     )
@@ -133,10 +148,8 @@ def centered_logratio(abundance_representation: pd.DataFrame):
     np.fill_diagonal(copy, np.where(diag > 0, diag, 1))
 
     def _compute(row, i):
-        value = row[i]
-        values = row[np.nonzero(row)]
-        gmean = scipy.stats.mstats.gmean(values)
-        ratio = np.log(value / gmean)
+        gmean = scipy.stats.mstats.gmean(row + 1)
+        ratio = np.log10((row[i] + 1) / gmean)
         return ratio
 
     return pd.Series(

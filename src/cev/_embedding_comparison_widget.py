@@ -10,6 +10,7 @@ from cev._compare import (
     has_pointwise_correspondence,
 )
 from cev._compare_metric_dropdown import (
+    create_max_depth_dropdown,
     create_metric_dropdown,
     create_update_distance_callback,
 )
@@ -30,6 +31,7 @@ class EmbeddingComparisonWidget:
         inverted_colormap: bool = False,
         auto_zoom: bool = False,
         phenotype_selection: bool = False,
+        max_depth: int = 1,
         titles: tuple[str, str] | None = None,
         **kwargs,
     ):
@@ -45,7 +47,7 @@ class EmbeddingComparisonWidget:
         # representative label
         markers = [m.name for m in parse_label(left_embedding.labels.iloc[0])]
         self.marker_selection = MarkerSelectionIndicator(
-            markers=markers, active=[True] + [False for x in range(len(markers) - 1)]
+            markers=markers, active=[True] * len(markers)
         )
 
         self.row_height = row_height
@@ -53,6 +55,7 @@ class EmbeddingComparisonWidget:
         self.auto_zoom = auto_zoom
         self.phenotype_selection = phenotype_selection
         self.inverted_colormap = inverted_colormap
+        self.max_depth = max_depth
         self.titles = titles
 
     def show(
@@ -62,13 +65,19 @@ class EmbeddingComparisonWidget:
         inverted_colormap: bool | None = None,
         auto_zoom: bool | None = None,
         phenotype_selection: bool | None = None,
+        max_depth: int | None = None,
         **kwargs,
     ):
         metric_dropdown = create_metric_dropdown(
             self.left, self.right, self.metric if metric is None else metric
         )
+
+        max_depth_dropdown = create_max_depth_dropdown(
+            metric_dropdown, self.max_depth if max_depth is None else max_depth
+        )
+
         update_distances = create_update_distance_callback(
-            metric_dropdown, self.left, self.right
+            metric_dropdown, max_depth_dropdown, self.left, self.right
         )
 
         zoom = create_zoom_toggle(
@@ -102,7 +111,15 @@ class EmbeddingComparisonWidget:
             ipywidgets.VBox(
                 [
                     self.marker_selection,
-                    ipywidgets.HBox([metric_dropdown, inverted, selection_type, zoom]),
+                    ipywidgets.HBox(
+                        [
+                            metric_dropdown,
+                            inverted,
+                            selection_type,
+                            zoom,
+                            max_depth_dropdown,
+                        ]
+                    ),
                 ]
             )
         ]
