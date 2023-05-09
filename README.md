@@ -1,4 +1,6 @@
-# cev
+# Comparative Embedding Visualization with `cev`
+
+`cev` is an interactive Jupyter widget for comparing a pair of 2D embeddings with shared labels by label confusion, neighborhood composition, and label size.
 
 ## Installation
 
@@ -8,22 +10,26 @@ pip install cev
 
 ## Development
 
-Create a virtual environment with all the required dependencies with `conda`:
+First, create a virtual environment with all the required dependencies. We highly recommend to use [`hatch`](https://github.com/pypa/hatch), which installs and sync all dependencies from `pyproject.toml` automatically/
+
+```sh
+hatch shell
+```
+
+Alternatively, you can also use [`conda`](https://docs.conda.io/en/latest/).
 
 ```sh
 conda env create -n cev python=3.11
 conda activate cev
+```
+
+Next, install `cev` with all development assets.
+
+```sh
 pip install -e ".[notebooks,dev]"
 ```
 
-or automatically if you use [`hatch`](https://github.com/pypa/hatch):
-
-```sh
-hatch shell
-# syncs and installs deps from `pyproject.toml`
-```
-
-You can now run the notebooks with:
+Finally, you can now run the notebooks with:
 
 ```sh
 jupyterlab
@@ -62,3 +68,6 @@ git tag -a vX.X.X -m "vX.X.X"
 git push --follow-tags
 ```
 
+## License
+
+`cev` is distributed under the terms of the [Apache License 2.0](LICENSE).
