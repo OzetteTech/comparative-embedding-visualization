@@ -51,7 +51,7 @@ class MarkerSelectionIndicator(anywidget.AnyWidget):
       Object.assign(sortLabel.style, { fontSize: "0.875em", marginRight: "0.25rem" });
       
       const sortImportance = document.createElement("button");
-      sortImportance.textContent = "Importance";
+      sortImportance.textContent = "Expression Discriminability";
       Object.assign(sortImportance.style, {
         background: view.model.get("sort_alphabetically") ? "white" : BUTTON_ACTIVE_SECONDARY_BG,
         border: `1px solid ${view.model.get("sort_alphabetically") ? BUTTON_BG : BUTTON_ACTIVE_SECONDARY_BG}`,
