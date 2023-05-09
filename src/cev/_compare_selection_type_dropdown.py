@@ -16,7 +16,7 @@ def create_selection_type_dropdown(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,
     pointwise_correspondence: bool,
-    default: str | None = 'independent'
+    default: str | None = "independent",
 ):
     # SELECTION START
     def unlink():
@@ -73,12 +73,12 @@ def create_selection_type_dropdown(
 
     if pointwise_correspondence:
         initial_selection = independent
-        
-        if default == 'synced':
+
+        if default == "synced":
             initial_selection = sync
-        elif default == 'phenotype':
+        elif default == "phenotype":
             initial_selection = phenotype
-        
+
         selection_type_options = [
             ("Independent", independent),
             ("Synced", sync),
@@ -94,13 +94,15 @@ def create_selection_type_dropdown(
         selection_type.observe(lambda change: change.new(), names="value")  # type: ignore
         initial_selection()
         return selection_type
-    
+
     else:
         initial_selection = False
-        if default == 'phenotype':
+        if default == "phenotype":
             initial_selection = True
-            
-        selection_type = ipywidgets.Checkbox(initial_selection, description="Phenotype Selection")
+
+        selection_type = ipywidgets.Checkbox(
+            initial_selection, description="Phenotype Selection"
+        )
 
         def handle_selection_change(change):
             if change.new is False:
@@ -109,8 +111,8 @@ def create_selection_type_dropdown(
                 phenotype()
 
         selection_type.observe(handle_selection_change, names="value")
-        
+
         if initial_selection:
             phenotype()
-        
+
         return selection_type
