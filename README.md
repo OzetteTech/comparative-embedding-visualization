@@ -23,7 +23,7 @@
   
   ![Teaser](https://github.com/OzetteTech/comparative-embedding-visualization/assets/84813279/297cbdb9-b6a2-4102-bde9-b14f0ca24a09)
   
-  <sub>The figure shows data from [Mair et al., 2022](https://doi.org/10.1038/s41586-022-04718-w) that were analyzed with [Greene et al., 2021](https://doi.org/10.1016/j.patter.2021.100372)'s FAUST method and [transformed](https://github.com/flekschas-ozette/ismb-biovis-2022) prior to being embedded with [UMAP](https://github.com/lmcinnes/umap).</sub>
+  <sub>The figure shows data from [Mair et al. (2022)](https://doi.org/10.1038/s41586-022-04718-w) that were analyzed with [Greene et al.'s (2021) FAUST method](https://doi.org/10.1016/j.patter.2021.100372).<br />The embeddings were generated with [Greene et al.'s (2021) annotation transformation](https://github.com/flekschas-ozette/ismb-biovis-2022) and [UMAP](https://github.com/lmcinnes/umap).</sub>
   
 </div>
 
