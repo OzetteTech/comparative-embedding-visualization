@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import typing
+from uuid import uuid4
 
 import ipywidgets
 import jscatter
@@ -79,7 +80,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
                 y="y",
                 background_color=background_color,
                 axes=axes,
-                opacity_unselected=opacity_unselected,
+                opacity_by="density",
                 lasso_initiator=False,
                 **kwargs,
             )
@@ -156,12 +157,15 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
     def show(self, row_height: int | None = None, **kwargs):
         widgets = []
 
+        uuid = uuid4().hex
+
         for scatter in self.scatters:
             if row_height is not None:
                 scatter.height(row_height)
             widget = scatter.show()
             widget.layout = {"margin": "0 0 2px 0"}
             widgets.append(widget)
+            scatter.widget.view_sync = uuid
 
         widgets.append(self.logo)
 

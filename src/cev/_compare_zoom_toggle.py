@@ -11,8 +11,9 @@ if typing.TYPE_CHECKING:
 def create_zoom_toggle(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,
+    default: bool = False,
 ):
-    zoom = ipywidgets.Checkbox(False, description="auto-zoom")
+    zoom = ipywidgets.Checkbox(default, description="Auto Zoom")
 
     def handle_selection_change_zoom(emb: EmbeddingWidgetCollection):
         def on_change(change):
