@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import typing
-
 import ipywidgets
 
 from cev._compare import (
@@ -21,13 +19,13 @@ from cev._widget_utils import add_ilocs_trait, parse_label
 from cev.components import MarkerSelectionIndicator
 
 
-class EmbeddingComparisonWidget:
+class EmbeddingComparisonWidget(ipywidgets.VBox):
     def __init__(
         self,
         left_embedding: Embedding,
         right_embedding: Embedding,
         row_height: int = 250,
-        metric: str = "",
+        metric: None | str = None,
         inverted_colormap: bool = False,
         auto_zoom: bool = False,
         phenotype_selection: bool = False,
@@ -35,10 +33,10 @@ class EmbeddingComparisonWidget:
         titles: tuple[str, str] | None = None,
         **kwargs,
     ):
-        self.pointwise_correspondence = has_pointwise_correspondence(
-            left_embedding,
-            right_embedding,
+        pointwise_correspondence = has_pointwise_correspondence(
+            left_embedding, right_embedding
         )
+
         self.left_embedding = left_embedding
         self.right_embedding = right_embedding
         self.left = left_embedding.widgets(**kwargs)
@@ -49,53 +47,28 @@ class EmbeddingComparisonWidget:
         self.marker_selection = MarkerSelectionIndicator(
             markers=markers, active=[True] * len(markers)
         )
-
-        self.row_height = row_height
-        self.metric = metric
-        self.auto_zoom = auto_zoom
-        self.phenotype_selection = phenotype_selection
-        self.inverted_colormap = inverted_colormap
-        self.max_depth = max_depth
-        self.titles = titles
-
-    def show(
-        self,
-        row_height: int | None = None,
-        metric: str | None = None,
-        inverted_colormap: bool | None = None,
-        auto_zoom: bool | None = None,
-        phenotype_selection: bool | None = None,
-        max_depth: int | None = None,
-        **kwargs,
-    ):
-        metric_dropdown = create_metric_dropdown(
-            self.left, self.right, self.metric if metric is None else metric
-        )
-
-        max_depth_dropdown = create_max_depth_dropdown(
-            metric_dropdown, self.max_depth if max_depth is None else max_depth
-        )
-
+        metric_dropdown = create_metric_dropdown(self.left, self.right, metric)
+        max_depth_dropdown = create_max_depth_dropdown(metric_dropdown, max_depth)
         update_distances = create_update_distance_callback(
             metric_dropdown, max_depth_dropdown, self.left, self.right
         )
 
         zoom = create_zoom_toggle(
-            self.left, self.right, self.auto_zoom if auto_zoom is None else auto_zoom
+            self.left, self.right, auto_zoom if auto_zoom is None else auto_zoom
         )
 
         inverted = create_invert_color_checkbox(
             self.left,
             self.right,
-            self.inverted_colormap if inverted_colormap is None else inverted_colormap,
+            inverted_colormap if inverted_colormap is None else inverted_colormap,
         )
 
         selection_type = create_selection_type_dropdown(
             self.left,
             self.right,
-            self.pointwise_correspondence,
+            pointwise_correspondence,
             "phenotype"
-            if phenotype_selection is True or self.phenotype_selection is True
+            if phenotype_selection is True or phenotype_selection is True
             else "independent",
         )
 
@@ -107,7 +80,7 @@ class EmbeddingComparisonWidget:
         )
 
         # Header
-        sections = [
+        sections: list[ipywidgets.Widget] = [
             ipywidgets.VBox(
                 [
                     self.marker_selection,
@@ -124,8 +97,8 @@ class EmbeddingComparisonWidget:
             )
         ]
 
-        if self.titles is not None:
-            left_title, right_title = self.titles
+        if titles is not None:
+            left_title, right_title = titles
             sections.append(
                 ipywidgets.HTML(
                     value='<div style="height: 1px; background: #efefef;" />',
@@ -151,9 +124,7 @@ class EmbeddingComparisonWidget:
             ipywidgets.HBox(
                 [
                     cmp.show(
-                        row_height=self.row_height
-                        if row_height is None
-                        else row_height,
+                        row_height=row_height if row_height is None else row_height,
                         layout=ipywidgets.Layout(width="50%"),
                     )
                     for cmp in (self.left, self.right)
@@ -161,12 +132,8 @@ class EmbeddingComparisonWidget:
             )
         )
 
-        widget = ipywidgets.VBox(sections)
-
-        add_ilocs_trait(widget, self.left, self.right)
-        typing.cast(typing.Any, widget).left = self.left
-        typing.cast(typing.Any, widget).right = self.right
-        return widget
+        super().__init__(sections)
+        add_ilocs_trait(self, self.left, self.right)
 
     @property
     def embeddings(self):
