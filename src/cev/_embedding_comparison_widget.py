@@ -19,6 +19,29 @@ from cev._widget_utils import add_ilocs_trait, parse_label
 from cev.components import MarkerSelectionIndicator
 
 
+def _create_titles(
+    titles: tuple[str, str]
+) -> tuple[ipywidgets.Widget, ipywidgets.Widget]:
+    left_title, right_title = titles
+    spacer = ipywidgets.HTML(
+        value='<div style="height: 1px; background: #efefef;" />',
+        layout=ipywidgets.Layout(width="100%"),
+    )
+    title_widget = ipywidgets.HBox(
+        [
+            ipywidgets.HTML(
+                value=f'<h3 style="display: flex; justify-content: center; margin: 0 0 0 38px;">{left_title}</h3>',
+                layout=ipywidgets.Layout(width="50%"),
+            ),
+            ipywidgets.HTML(
+                value=f'<h3 style="display: flex; justify-content: center; margin: 0 0 0 38px;">{right_title}</h3>',
+                layout=ipywidgets.Layout(width="50%"),
+            ),
+        ]
+    )
+    return spacer, title_widget
+
+
 class EmbeddingComparisonWidget(ipywidgets.VBox):
     def __init__(
         self,
@@ -53,14 +76,9 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
             metric_dropdown, max_depth_dropdown, self.left, self.right
         )
 
-        zoom = create_zoom_toggle(
-            self.left, self.right, auto_zoom if auto_zoom is None else auto_zoom
-        )
-
+        zoom = create_zoom_toggle(self.left, self.right, auto_zoom)
         inverted = create_invert_color_checkbox(
-            self.left,
-            self.right,
-            inverted_colormap if inverted_colormap is None else inverted_colormap,
+            self.left, self.right, inverted_colormap
         )
 
         selection_type = create_selection_type_dropdown(
@@ -98,27 +116,7 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
         ]
 
         if titles is not None:
-            left_title, right_title = titles
-            sections.append(
-                ipywidgets.HTML(
-                    value='<div style="height: 1px; background: #efefef;" />',
-                    layout=ipywidgets.Layout(width="100%"),
-                )
-            )
-            sections.append(
-                ipywidgets.HBox(
-                    [
-                        ipywidgets.HTML(
-                            value=f'<h3 style="display: flex; justify-content: center; margin: 0 0 0 38px;">{left_title}</h3>',
-                            layout=ipywidgets.Layout(width="50%"),
-                        ),
-                        ipywidgets.HTML(
-                            value=f'<h3 style="display: flex; justify-content: center; margin: 0 0 0 38px;">{right_title}</h3>',
-                            layout=ipywidgets.Layout(width="50%"),
-                        ),
-                    ]
-                )
-            )
+            sections.extend(_create_titles(titles))
 
         sections.append(
             ipywidgets.HBox(
