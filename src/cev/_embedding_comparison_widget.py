@@ -85,9 +85,7 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
             self.left,
             self.right,
             pointwise_correspondence,
-            "phenotype"
-            if phenotype_selection is True or phenotype_selection is True
-            else "independent",
+            "phenotype" if phenotype_selection else "independent",
         )
 
         connect_marker_selection(
