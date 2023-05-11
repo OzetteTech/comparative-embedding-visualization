@@ -54,19 +54,18 @@ def _prepare_ozette(df: pd.DataFrame, robust_only: bool = True):
         robust = (df["faustLabels"] != NON_ROBUST_LABEL).to_numpy()
         representative_label = df["faustLabels"][robust].iloc[0]
 
+        coords = df[["umapX", "umapY"]].to_numpy()
+
         if robust_only:
             df = df[robust].reset_index(drop=True)
-            coords = df[["umapX", "umapY"]].to_numpy()
             labels = df["faustLabels"].to_numpy()
             robust = None
         else:
-            coords = df[["umapX", "umapY"]].to_numpy()
-            df = df[["faustLabels"]]
-            df["label"] = ""
+            df["labels"] = ""
             for marker in parse_label(representative_label):
                 marker_annoation = marker.name + df[f"{marker.name}_faust_annotation"]
-                df["label"] += marker_annoation
-            labels = df["label"].to_numpy()
+                df["labels"] += marker_annoation
+            labels = df["labels"].to_numpy()
 
     labels = pd.Series(labels, dtype="category")
     return coords, labels, robust
