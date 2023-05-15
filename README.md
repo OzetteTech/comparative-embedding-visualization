@@ -1,6 +1,31 @@
-# Comparative Embedding Visualization with `cev`
+<h1 align="center">
+  Comparative Embedding Visualization with <code>cev</code>
+</h1>
 
-`cev` is an interactive Jupyter widget for comparing a pair of 2D embeddings with shared labels by label confusion, neighborhood composition, and label size.
+<div align="center">
+  
+  [![pypi version](https://img.shields.io/badge/ozette-technologies-ozette.svg?color=0072E1&labelColor=0B1117&style=flat-square)](https://ozette.com/)
+  [![pypi version](https://img.shields.io/pypi/v/cev.svg?color=0072E1&labelColor=0B1117&style=flat-square)](https://pypi.org/project/cev/)
+  [![build status](https://img.shields.io/github/actions/workflow/status/OzetteTech/comparative-embedding-visualization/ci.yml?branch=main&color=0072E1&labelColor=0B1117&style=flat-square)](https://github.com/OzetteTech/comparative-embedding-visualization/actions?query=workflow%3ARelease)
+  [![notebook examples](https://img.shields.io/badge/notebook-examples-0072E1.svg?labelColor=0B1117&style=flat-square)](notebooks)
+  
+</div>
+
+<div align="center">
+  
+  <strong><code>cev</code> is an interactive Jupyter widget for comparing a pair of 2D embeddings with shared labels.</strong><br />Its novel metric allows to surface differences in label confusion, neighborhood composition, and label size.
+  
+</div>
+
+<br/>
+
+<div align="center">
+  
+  ![Teaser](https://github.com/OzetteTech/comparative-embedding-visualization/assets/84813279/297cbdb9-b6a2-4102-bde9-b14f0ca24a09)
+  
+  <sub>The figure shows data from [Mair et al. (2022)](https://doi.org/10.1038/s41586-022-04718-w) that were analyzed with [Greene et al.'s (2021) FAUST method](https://doi.org/10.1016/j.patter.2021.100372).<br />The embeddings were generated with [Greene et al.'s (2021) annotation transformation](https://github.com/flekschas-ozette/ismb-biovis-2022) and [UMAP](https://github.com/lmcinnes/umap).</sub>
+  
+</div>
 
 ## Installation
 
@@ -10,7 +35,7 @@ pip install cev
 
 ## Development
 
-First, create a virtual environment with all the required dependencies. We highly recommend to use [`hatch`](https://github.com/pypa/hatch), which installs and sync all dependencies from `pyproject.toml` automatically/
+First, create a virtual environment with all the required dependencies. We highly recommend to use [`hatch`](https://github.com/pypa/hatch), which installs and sync all dependencies from `pyproject.toml` automatically.
 
 ```sh
 hatch shell
