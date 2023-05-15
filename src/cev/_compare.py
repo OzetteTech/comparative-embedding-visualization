@@ -36,7 +36,9 @@ def compare(a: Embedding, b: Embedding, row_height: int = 250, **kwargs):
     )
 
     metric_dropdown = create_metric_dropdown(left, right)
-    update_distances = create_update_distance_callback(metric_dropdown, left, right)
+    update_distances = create_update_distance_callback(
+        metric_dropdown, marker_selection, left, right
+    )
     zoom = create_zoom_toggle(left, right)
     inverted = create_invert_color_checkbox(left, right)
     selection_type = create_selection_type_dropdown(

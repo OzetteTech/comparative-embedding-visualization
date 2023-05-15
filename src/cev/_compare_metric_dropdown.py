@@ -125,7 +125,7 @@ def create_update_distance_callback(
 
         for dist, emb in zip(distances, (left, right)):
             if metric_dropdown.label == "Abundance (Absolute)":
-                vmax = max(abs(dist.min()), abs(dist.max()), 3)
+                vmax = max(abs(dist.min()), abs(dist.max()))
                 emb.metric_color_options = (
                     diverging_cmap,
                     diverging_cmap[::-1],
@@ -133,7 +133,7 @@ def create_update_distance_callback(
                     ("Lower", "Higher", "Abs. Abundance Difference"),
                 )
             elif metric_dropdown.label == "Abundance (Normalized)":
-                vmax = max(abs(dist.min()), abs(dist.max()), 3)
+                vmax = max(abs(dist.min()), abs(dist.max()))
                 emb.metric_color_options = (
                     diverging_cmap,
                     diverging_cmap[::-1],

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import ipywidgets
 
 from cev._compare import (
@@ -136,9 +138,39 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
         yield [self.left_embedding, self.left]
         yield [self.right_embedding, self.right]
 
-    def select(self, label: str):
+    def select(self, labels: str | list[str]):
+        if isinstance(labels, str):
+            for [embedding, embedding_widget] in self.embeddings:
+                point_idxs = embedding.labels[
+                    embedding.labels.str.startswith(labels)
+                ].index
+                print(f"Found {len(point_idxs)} points")
+                for scatter in embedding_widget.scatters:
+                    scatter.selection(point_idxs)
+            return
+
+        regexs = []
+
         for [embedding, embedding_widget] in self.embeddings:
-            point_idxs = embedding.labels[embedding.labels.str.startswith(label)].index
+            markers = list(filter(None, re.split("[+-]", embedding.labels[0])))
+            marker_set = set(markers)
+            marker_order = {s: i for i, s in enumerate(markers)}
+
+            valid_labels = list(filter(lambda label: label[:-1] in marker_set, labels))
+            ordered_labels = sorted(
+                valid_labels, key=lambda label: marker_order.get(label[:-1], 0)
+            )
+
+            regex = (
+                ".*" + ".*".join([re.escape(label) for label in ordered_labels]) + ".*"
+            )
+            regexs.append(regex)
+
+        for i, [embedding, embedding_widget] in enumerate(self.embeddings):
+            regex = regexs[i]
+            point_idxs = embedding.labels[
+                embedding.labels.str.match(regex, flags=re.IGNORECASE)
+            ].index
             print(f"Found {len(point_idxs)} points")
             for scatter in embedding_widget.scatters:
                 scatter.selection(point_idxs)
