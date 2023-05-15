@@ -61,7 +61,7 @@ def _prepare_ozette(df: pd.DataFrame, robust_only: bool = True):
             labels = df["faustLabels"].to_numpy()
             robust = None
         else:
-            df["labels"] = ""
+            labels = pd.Series("", index=df.index)
             for marker in parse_label(representative_label):
                 marker_annoation = marker.name + df[f"{marker.name}_faust_annotation"]
                 df["labels"] += marker_annoation
