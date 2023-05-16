@@ -23,6 +23,8 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
     inverted = traitlets.Bool(default_value=False)
     unique_labels = traitlets.List(trait=traitlets.Unicode, default_value=[])
     labels = traitlets.Any()
+    distances = traitlets.Any()
+    colormap = traitlets.Dict()
 
     def __init__(
         self,
@@ -45,7 +47,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         )
 
         self.labels = labels
-        self.distances = 0  # type: ignore
+        self.distances = pd.Series(0.0, index=labels.index, dtype="float64")
         self.colormap = create_colormaps(self.robust_labels.cat.categories)
 
         ipywidgets.dlink(
@@ -58,6 +60,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         labels = self.labels if ilocs is None else self.labels.iloc[ilocs]
         return {k: int(v) for k, v in labels.value_counts().items()}
 
+    @property
+    def _data(self) -> pd.DataFrame:
+        assert self.categorial_scatter._data is self.metric_scatter._data
+        assert self.categorial_scatter._data is not None
+        return self.categorial_scatter._data
+
     @traitlets.validate("labels")
     def _validate_labels(self, proposal: object):
         assert isinstance(proposal.value, pd.Series)
@@ -69,6 +77,43 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         assert self.categorical_scatter._data is self.metric_scatter._data
         assert self.categorical_scatter._data is not None
         return self.categorical_scatter._data
+
+    @traitlets.observe("labels")
+    def _on_labels_change(self, change):
+        labels = change.new
+        self._data[_LABEL_COLUMN] = pd.Series(np.asarray(labels), dtype="category")
+        self._data[_ROBUST_LABEL_COLUMN] = pd.Series(
+            np.asarray(self._labeler(labels)), dtype="category"
+        )
+        self.logo.counts = self.label_counts(self.categorial_scatter.widget.selection)
+        self.has_markers = "+" in self._data[_LABEL_COLUMN][0]
+        self.unique_labels = list(self._data[_LABEL_COLUMN].unique())
+
+    @traitlets.validate("distances")
+    def _validate_distances(self, proposal: object):
+        assert isinstance(proposal.value, pd.Series)
+        assert proposal.value.dtype == "float64"
+        return proposal.value
+
+    @traitlets.observe("distances")
+    def _on_distances_change(self, change):
+        self._data[_DISTANCE_COLUMN] = change.new
+        self._update_metric_scatter()
+
+    @traitlets.observe("inverted")
+    def _update_metric_scatter(self, *args, **kwargs):
+        cmap, cmapr, norm, labeling = self.metric_color_options
+        self.metric_scatter.color(
+            by=_DISTANCE_COLUMN,
+            map=cmapr if self.inverted else cmap,
+            norm=norm,
+            labeling=labeling,
+        )
+        self.metric_scatter.legend(True)
+
+    @traitlets.observe("colormap")
+    def _on_colormap_change(self, change):
+        self._update_categorial_scatter()
 
     @classmethod
     def from_embedding(
@@ -111,28 +156,6 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
     @property
     def robust_labels(self) -> pd.Series:
         return self._data[_ROBUST_LABEL_COLUMN]
-
-    @traitlets.observe("labels")
-    def labels_change(self, change):
-        labels = change.new
-        self._data[_LABEL_COLUMN] = pd.Series(np.asarray(labels), dtype="category")
-        self._data[_ROBUST_LABEL_COLUMN] = pd.Series(
-            np.asarray(self._labeler(labels)), dtype="category"
-        )
-        self.logo.counts = self.label_counts(self.categorical_scatter.widget.selection)
-        self.has_markers = "+" in self._data[_LABEL_COLUMN][0]
-        self.unique_labels = list(self._data[_LABEL_COLUMN].unique())
-
-    @traitlets.observe("inverted")
-    def _update_metric_scatter(self, *args, **kwargs):
-        cmap, cmapr, norm, labeling = self.metric_color_options
-        self.metric_scatter.color(
-            by=_DISTANCE_COLUMN,
-            map=cmapr if self.inverted else cmap,
-            norm=norm,
-            labeling=labeling,
-        )
-        self.metric_scatter.legend(True)
 
     def _update_categorical_scatter(self, *args, **kwargs):
         self.categorical_scatter.legend(False)
