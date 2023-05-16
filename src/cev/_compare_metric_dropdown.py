@@ -151,13 +151,17 @@ def create_update_distance_callback(
 
         kwargs = {}
 
+        num_labels = len(set(left.unique_labels + right.unique_labels))
+
         if has_max_depth(metric_dropdown):
-            key = f"{metric_dropdown.label}:{max_depth_dropdown.value}"
+            key = f"{metric_dropdown.label}:{max_depth_dropdown.value}:{num_labels}"
+            print("Existing", distances_key, "Current", key)
             if distances is None or distances_key != key:
                 distances_key = key
                 distances = metric_dropdown.value(max_depth=max_depth_dropdown.value)
         else:
-            key = metric_dropdown.label
+            key = f"{metric_dropdown.label}:{num_labels}"
+            print("Existing", distances_key, "Current", key)
             if distances is None or distances_key != key:
                 distances_key = key
                 distances = metric_dropdown.value(**kwargs)
@@ -186,7 +190,7 @@ def create_update_distance_callback(
                     "viridis",
                     "viridis_r",
                     value_range_slider.value,
-                    ("Lower", "Higher", "Confusion Difference"),
+                    ("Low", "High", "Confusion"),
                 )
             elif metric_dropdown.label == "Neighborhood":
                 emb.metric_color_options = (
@@ -201,10 +205,5 @@ def create_update_distance_callback(
                 )
 
             emb.distances = dist
-
-    metric_dropdown.observe(lambda _: callback(), names="value")
-    max_depth_dropdown.observe(lambda _: callback(), names="value")
-    value_range_slider.observe(lambda _: callback(), names="value")
-    callback()
 
     return callback

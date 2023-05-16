@@ -88,19 +88,19 @@ def add_ilocs_trait(
     Containts the (left, right) selections.
     """
     initial = (
-        left.categorial_scatter.selection(),
-        right.categorial_scatter.selection(),
+        left.categorical_scatter.selection(),
+        right.categorical_scatter.selection(),
     )
     widget.add_traits(ilocs=traitlets.Tuple(initial))
 
     ipywidgets.dlink(
-        source=(left.categorial_scatter.widget, "selection"),
+        source=(left.categorical_scatter.widget, "selection"),
         target=(widget, "ilocs"),
         transform=lambda iloc: (iloc, widget.ilocs[1]),  # type: ignore
     )
 
     ipywidgets.dlink(
-        source=(right.categorial_scatter.widget, "selection"),
+        source=(right.categorical_scatter.widget, "selection"),
         target=(widget, "ilocs"),
         transform=lambda iloc: (widget.ilocs[0], iloc),  # type: ignore
     )

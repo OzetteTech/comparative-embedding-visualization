@@ -20,17 +20,18 @@ _DISTANCE_COLUMN = "distance"
 
 
 class EmbeddingWidgetCollection(traitlets.HasTraits):
-    inverted = traitlets.Bool(False)
+    inverted = traitlets.Bool(default_value=False)
+    unique_labels = traitlets.List(trait=traitlets.Unicode, default_value=[])
 
     def __init__(
         self,
         labels: pd.Series,
-        categorial_scatter: jscatter.Scatter,
+        categorical_scatter: jscatter.Scatter,
         metric_scatter: jscatter.Scatter,
         logo: MarkerCompositionLogo,
         labeler: typing.Callable[[npt.ArrayLike], pd.Series],
     ):
-        self.categorial_scatter = categorial_scatter
+        self.categorical_scatter = categorical_scatter
         self.metric_scatter = metric_scatter
         self.logo = logo
         self._labeler = labeler
@@ -46,7 +47,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self.colormap = create_colormaps(self.robust_labels.cat.categories)
 
         ipywidgets.dlink(
-            source=(self.categorial_scatter.widget, "selection"),
+            source=(self.categorical_scatter.widget, "selection"),
             target=(self.logo, "counts"),
             transform=self.label_counts,
         )
@@ -57,9 +58,9 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     @property
     def _data(self) -> pd.DataFrame:
-        assert self.categorial_scatter._data is self.metric_scatter._data
-        assert self.categorial_scatter._data is not None
-        return self.categorial_scatter._data
+        assert self.categorical_scatter._data is self.metric_scatter._data
+        assert self.categorical_scatter._data is not None
+        return self.categorical_scatter._data
 
     @classmethod
     def from_embedding(
@@ -67,13 +68,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         emb: Embedding,
         background_color: str = "black",
         axes: bool = False,
-        opacity_unselected: float = 0.05,
         **kwargs,
     ):
         X = np.array(emb.coords)
         data = pd.DataFrame({"x": X[:, 0], "y": X[:, 1]})
 
-        categorial_scatter, metric_scatter = (
+        categorical_scatter, metric_scatter = (
             jscatter.Scatter(
                 data=data,
                 x="x",
@@ -88,13 +88,13 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         )
         # link the plots together with js
         link_widgets(
-            (categorial_scatter.widget, "selection"),
+            (categorical_scatter.widget, "selection"),
             (metric_scatter.widget, "selection"),
         )
 
         return cls(
             labels=emb.labels,
-            categorial_scatter=categorial_scatter,
+            categorical_scatter=categorical_scatter,
             metric_scatter=metric_scatter,
             logo=MarkerCompositionLogo(),
             labeler=lambda labels: robust_labels(labels, emb.robust),
@@ -114,7 +114,9 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self._data[_ROBUST_LABEL_COLUMN] = pd.Series(
             np.asarray(self._labeler(labels)), dtype="category"
         )
-        self.logo.counts = self.label_counts(self.categorial_scatter.widget.selection)
+        self.logo.counts = self.label_counts(self.categorical_scatter.widget.selection)
+        self.has_markers = "+" in self._data[_LABEL_COLUMN][0]
+        self.unique_labels = list(self._data[_LABEL_COLUMN].unique())
 
     @traitlets.observe("inverted")
     def _update_metric_scatter(self, *args, **kwargs):
@@ -127,9 +129,9 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         )
         self.metric_scatter.legend(True)
 
-    def _update_categorial_scatter(self, *args, **kwargs):
-        self.categorial_scatter.legend(False)
-        self.categorial_scatter.color(by=_ROBUST_LABEL_COLUMN, map=self._colormap)
+    def _update_categorical_scatter(self, *args, **kwargs):
+        self.categorical_scatter.legend(False)
+        self.categorical_scatter.color(by=_ROBUST_LABEL_COLUMN, map=self._colormap)
 
     @property
     def distances(self) -> pd.Series:
@@ -147,11 +149,11 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
     @colormap.setter
     def colormap(self, cmap: dict):
         self._colormap = cmap
-        self._update_categorial_scatter()
+        self._update_categorical_scatter()
 
     @property
     def scatters(self):
-        yield self.categorial_scatter
+        yield self.categorical_scatter
         yield self.metric_scatter
 
     def show(self, row_height: int | None = None, **kwargs):
@@ -167,7 +169,8 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             widgets.append(widget)
             scatter.widget.view_sync = uuid
 
-        widgets.append(self.logo)
+        if self.has_markers:
+            widgets.append(self.logo)
 
         return ipywidgets.VBox(widgets, **kwargs)
 

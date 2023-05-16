@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import typing
 
 import ipywidgets
 
@@ -54,9 +55,10 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
         metric: None | str = None,
         inverted_colormap: bool = False,
         auto_zoom: bool = False,
-        phenotype_selection: bool = False,
+        selection: typing.Literal["independent", "synced", "phenotype"] = "independent",
         max_depth: int = 1,
         titles: tuple[str, str] | None = None,
+        active_markers: list[str] | typing.Literal["all"] = "all",
         **kwargs,
     ):
         pointwise_correspondence = has_pointwise_correspondence(
@@ -68,11 +70,6 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
         self.left = left_embedding.widgets(**kwargs)
         self.right = right_embedding.widgets(**kwargs)
 
-        # representative label
-        markers = [m.name for m in parse_label(left_embedding.labels.iloc[0])]
-        self.marker_selection = MarkerSelectionIndicator(
-            markers=markers, active=[True] * len(markers)
-        )
         metric_dropdown = create_metric_dropdown(self.left, self.right, metric)
         max_depth_dropdown = create_max_depth_dropdown(metric_dropdown, max_depth)
         value_range_slider = create_value_range_slider(metric_dropdown)
@@ -84,6 +81,31 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
             self.right,
         )
 
+        has_markers = "+" in left_embedding.labels.iloc[0]
+
+        if has_markers:
+            # representative label
+            markers = [m.name for m in parse_label(left_embedding.labels.iloc[0])]
+            _active_markers = (
+                [True] * len(markers)
+                if active_markers == "all"
+                else [False] * len(markers)
+            )
+            for active_marker in active_markers:
+                try:
+                    _active_markers[markers.index(active_marker)] = True
+                except ValueError:
+                    pass
+            marker_selection = MarkerSelectionIndicator(
+                markers=markers, active=_active_markers
+            )
+            connect_marker_selection(
+                marker_selection,
+                (self.left_embedding, self.left),
+                (self.right_embedding, self.right),
+                update_distances,
+            )
+
         zoom = create_zoom_toggle(self.left, self.right, auto_zoom)
         inverted = create_invert_color_checkbox(
             self.left, self.right, inverted_colormap
@@ -93,34 +115,28 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
             self.left,
             self.right,
             pointwise_correspondence,
-            "phenotype" if phenotype_selection else "independent",
+            selection,
         )
 
-        connect_marker_selection(
-            self.marker_selection,
-            (self.left_embedding, self.left),
-            (self.right_embedding, self.right),
-            update_distances,
-        )
+        metric_dropdown.observe(lambda _: update_distances(), names="value")
+        max_depth_dropdown.observe(lambda _: update_distances(), names="value")
+        value_range_slider.observe(lambda _: update_distances(), names="value")
+
+        update_distances()
 
         # Header
-        sections: list[ipywidgets.Widget] = [
-            ipywidgets.VBox(
-                [
-                    self.marker_selection,
-                    ipywidgets.HBox(
-                        [
-                            metric_dropdown,
-                            inverted,
-                            value_range_slider,
-                            selection_type,
-                            zoom,
-                            max_depth_dropdown,
-                        ]
-                    ),
-                ]
-            )
-        ]
+        settings = ipywidgets.HBox(
+            [
+                metric_dropdown,
+                inverted,
+                value_range_slider,
+                selection_type,
+                zoom,
+                max_depth_dropdown,
+            ]
+        )
+        header = [marker_selection, settings] if has_markers else [settings]
+        sections: list[ipywidgets.Widget] = [ipywidgets.VBox(header)]
 
         if titles is not None:
             sections.extend(_create_titles(titles))
