@@ -13,6 +13,7 @@ from cev._compare_metric_dropdown import (
     create_max_depth_dropdown,
     create_metric_dropdown,
     create_update_distance_callback,
+    create_value_range_slider,
 )
 from cev._compare_selection_type_dropdown import create_selection_type_dropdown
 from cev._compare_zoom_toggle import create_zoom_toggle
@@ -74,8 +75,13 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
         )
         metric_dropdown = create_metric_dropdown(self.left, self.right, metric)
         max_depth_dropdown = create_max_depth_dropdown(metric_dropdown, max_depth)
+        value_range_slider = create_value_range_slider(metric_dropdown)
         update_distances = create_update_distance_callback(
-            metric_dropdown, max_depth_dropdown, self.left, self.right
+            metric_dropdown,
+            max_depth_dropdown,
+            value_range_slider,
+            self.left,
+            self.right,
         )
 
         zoom = create_zoom_toggle(self.left, self.right, auto_zoom)
@@ -106,6 +112,7 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
                         [
                             metric_dropdown,
                             inverted,
+                            value_range_slider,
                             selection_type,
                             zoom,
                             max_depth_dropdown,

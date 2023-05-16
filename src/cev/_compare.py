@@ -6,8 +6,10 @@ import ipywidgets
 import numpy as np
 
 from cev._compare_metric_dropdown import (
+    create_max_depth_dropdown,
     create_metric_dropdown,
     create_update_distance_callback,
+    create_value_range_slider,
 )
 from cev._compare_selection_type_dropdown import create_selection_type_dropdown
 from cev._compare_zoom_toggle import create_zoom_toggle
@@ -25,7 +27,9 @@ if typing.TYPE_CHECKING:
     from cev._embedding_widget import EmbeddingWidgetCollection
 
 
-def compare(a: Embedding, b: Embedding, row_height: int = 250, **kwargs):
+def compare(
+    a: Embedding, b: Embedding, row_height: int = 250, max_depth: int = 1, **kwargs
+):
     pointwise_correspondence = has_pointwise_correspondence(a, b)
     left, right = a.widgets(**kwargs), b.widgets(**kwargs)
 
@@ -36,8 +40,10 @@ def compare(a: Embedding, b: Embedding, row_height: int = 250, **kwargs):
     )
 
     metric_dropdown = create_metric_dropdown(left, right)
+    max_depth_dropdown = create_max_depth_dropdown(metric_dropdown, max_depth)
+    value_range_slider = create_value_range_slider(metric_dropdown)
     update_distances = create_update_distance_callback(
-        metric_dropdown, marker_selection, left, right
+        metric_dropdown, max_depth_dropdown, value_range_slider, left, right
     )
     zoom = create_zoom_toggle(left, right)
     inverted = create_invert_color_checkbox(left, right)
