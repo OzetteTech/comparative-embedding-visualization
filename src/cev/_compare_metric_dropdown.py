@@ -155,13 +155,11 @@ def create_update_distance_callback(
 
         if has_max_depth(metric_dropdown):
             key = f"{metric_dropdown.label}:{max_depth_dropdown.value}:{num_labels}"
-            print("Existing", distances_key, "Current", key)
             if distances is None or distances_key != key:
                 distances_key = key
                 distances = metric_dropdown.value(max_depth=max_depth_dropdown.value)
         else:
             key = f"{metric_dropdown.label}:{num_labels}"
-            print("Existing", distances_key, "Current", key)
             if distances is None or distances_key != key:
                 distances_key = key
                 distances = metric_dropdown.value(**kwargs)
