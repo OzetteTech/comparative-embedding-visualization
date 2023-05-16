@@ -110,22 +110,62 @@ def create_max_depth_dropdown(
     return dropdown
 
 
+def create_value_range_slider(metric_dropdown: ipywidgets.Dropdown):
+    slider = ipywidgets.FloatRangeSlider(
+        value=[0, 1],
+        min=0,
+        max=1,
+        step=0.05,
+        description="Color Range:",
+        continuous_update=False,
+        orientation="horizontal",
+        readout=True,
+        readout_format=".2f",
+    )
+
+    def callback():
+        if metric_dropdown.label.lower().startswith("abundance"):
+            slider.value = [0.05, 0.95]
+        else:
+            slider.value = [0, 1]
+
+    metric_dropdown.observe(lambda _: callback(), names="value")
+    callback()
+
+    return slider
+
+
 def create_update_distance_callback(
     metric_dropdown: ipywidgets.Dropdown,
     max_depth_dropdown: ipywidgets.Dropdown,
+    value_range_slider: ipywidgets.FloatRangeSlider,
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,
 ):
+    distances_key: str | None = None
+    distances: pd.Series | None = None
+
     def callback():
+        nonlocal distances_key
+        nonlocal distances
+
         kwargs = {}
+
         if has_max_depth(metric_dropdown):
-            distances = metric_dropdown.value(max_depth=max_depth_dropdown.value)
+            key = f"{metric_dropdown.label}:{max_depth_dropdown.value}"
+            if distances is None or distances_key != key:
+                distances_key = key
+                distances = metric_dropdown.value(max_depth=max_depth_dropdown.value)
         else:
-            distances = metric_dropdown.value(**kwargs)
+            key = metric_dropdown.label
+            if distances is None or distances_key != key:
+                distances_key = key
+                distances = metric_dropdown.value(**kwargs)
 
         for dist, emb in zip(distances, (left, right)):
             if metric_dropdown.label == "Abundance (Absolute)":
-                vmax = max(abs(dist.min()), abs(dist.max()))
+                lower, upper = dist.quantile(value_range_slider.value)
+                vmax = max(abs(lower), abs(upper))
                 emb.metric_color_options = (
                     diverging_cmap,
                     diverging_cmap[::-1],
@@ -133,7 +173,8 @@ def create_update_distance_callback(
                     ("Lower", "Higher", "Abs. Abundance Difference"),
                 )
             elif metric_dropdown.label == "Abundance (Normalized)":
-                vmax = max(abs(dist.min()), abs(dist.max()))
+                lower, upper = dist.quantile(value_range_slider.value)
+                vmax = max(abs(lower), abs(upper))
                 emb.metric_color_options = (
                     diverging_cmap,
                     diverging_cmap[::-1],
@@ -144,14 +185,14 @@ def create_update_distance_callback(
                 emb.metric_color_options = (
                     "viridis",
                     "viridis_r",
-                    [0, 1],
+                    value_range_slider.value,
                     ("Lower", "Higher", "Confusion Difference"),
                 )
             elif metric_dropdown.label == "Neighborhood":
                 emb.metric_color_options = (
                     "viridis",
                     "viridis_r",
-                    [0, 1],
+                    value_range_slider.value,
                     ("Low", "High", "Neighborhood Difference"),
                 )
             else:
@@ -163,6 +204,7 @@ def create_update_distance_callback(
 
     metric_dropdown.observe(lambda _: callback(), names="value")
     max_depth_dropdown.observe(lambda _: callback(), names="value")
+    value_range_slider.observe(lambda _: callback(), names="value")
     callback()
 
     return callback
