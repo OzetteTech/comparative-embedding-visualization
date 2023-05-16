@@ -47,7 +47,9 @@ def compare_neighborhoods(
     mb = neighborhood(df2, max_depth)
     overlap = ma.index.intersection(mb.index)
     dist = {label: 0.0 for label in typing.cast(pd.Series, ma.index.union(mb.index))}
-    sim = rowise_cosine_similarity(ma.loc[overlap, overlap], mb.loc[overlap, overlap])
+    sim = 1 - rowise_cosine_similarity(
+        ma.loc[overlap, overlap], mb.loc[overlap, overlap]
+    )
     dist.update(sim)
     return dist
 
