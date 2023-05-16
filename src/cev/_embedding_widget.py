@@ -22,6 +22,7 @@ _DISTANCE_COLUMN = "distance"
 class EmbeddingWidgetCollection(traitlets.HasTraits):
     inverted = traitlets.Bool(default_value=False)
     unique_labels = traitlets.List(trait=traitlets.Unicode, default_value=[])
+    labels = traitlets.Any()
 
     def __init__(
         self,
@@ -31,6 +32,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         logo: MarkerCompositionLogo,
         labeler: typing.Callable[[npt.ArrayLike], pd.Series],
     ):
+        super().__init__()
         self.categorical_scatter = categorical_scatter
         self.metric_scatter = metric_scatter
         self.logo = logo
@@ -55,6 +57,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
     def label_counts(self, ilocs: None | np.ndarray = None) -> dict:
         labels = self.labels if ilocs is None else self.labels.iloc[ilocs]
         return {k: int(v) for k, v in labels.value_counts().items()}
+
+    @traitlets.validate("labels")
+    def _validate_labels(self, proposal: object):
+        assert isinstance(proposal.value, pd.Series)
+        assert proposal.value.dtype == "category"
+        return proposal.value
 
     @property
     def _data(self) -> pd.DataFrame:
@@ -101,15 +109,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         )
 
     @property
-    def labels(self) -> pd.Series:
-        return self._data[_LABEL_COLUMN]
-
-    @property
     def robust_labels(self) -> pd.Series:
         return self._data[_ROBUST_LABEL_COLUMN]
 
-    @labels.setter
-    def labels(self, labels: npt.ArrayLike):
+    @traitlets.observe("labels")
+    def labels_change(self, change):
+        labels = change.new
         self._data[_LABEL_COLUMN] = pd.Series(np.asarray(labels), dtype="category")
         self._data[_ROBUST_LABEL_COLUMN] = pd.Series(
             np.asarray(self._labeler(labels)), dtype="category"

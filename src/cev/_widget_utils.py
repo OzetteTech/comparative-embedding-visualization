@@ -62,10 +62,12 @@ def parse_label(label: str) -> list[Marker]:
     ]
 
 
-def trim_label_series(labels: pd.Series, active_markers: set(str)):
+def trim_label_series(labels: pd.Series, active_markers: set[str]):
     splitted_labels = [
         marker for marker in labels.str.split("(\w+[\+|\-])", regex=True)
     ]
+
+    # TODO: Vectorize
 
     out = []
     for splitted_label in splitted_labels:
@@ -75,7 +77,7 @@ def trim_label_series(labels: pd.Series, active_markers: set(str)):
             )
         )
 
-    return out
+    return pd.Series(out, dtype="category")
 
 
 def add_ilocs_trait(
