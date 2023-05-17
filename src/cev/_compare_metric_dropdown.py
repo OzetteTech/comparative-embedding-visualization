@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import typing
 
 import ipywidgets
@@ -12,26 +13,46 @@ if typing.TYPE_CHECKING:
     from cev._embedding_widget import EmbeddingWidgetCollection
 
 
+CACHE_SIZE = 5
+
+
 def create_metric_dropdown(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,
     default: str | None = "confusion",
 ):
-    def _confusion(emb: EmbeddingWidgetCollection):
-        label_confusion = metrics.confusion(emb._data)
-        return emb.labels.map(label_confusion).astype(float)
+    @functools.lru_cache(maxsize=CACHE_SIZE)
+    def cached_confusion(emb: EmbeddingWidgetCollection):
+        return metrics.confusion(emb._data)
 
-    def confusion():
-        return _confusion(left), _confusion(right)
+    @functools.lru_cache(maxsize=CACHE_SIZE)
+    def cached_neighborhood(emb: EmbeddingWidgetCollection, max_depth: int = 1):
+        return metrics.neighborhood(emb._data, max_depth=max_depth)
+
+    def confusion(**kwargs):
+        left_label_confusion = cached_confusion(left)
+        right_label_confusion = cached_confusion(right)
+        return (
+            left.labels.map(left_label_confusion).astype(float),
+            right.labels.map(right_label_confusion).astype(float),
+        )
 
     def neighborhood(max_depth: int = 1):
-        dist = metrics.compare_neighborhoods(left._data, right._data, max_depth)
+        a = cached_neighborhood(left, max_depth)
+        b = cached_neighborhood(right, max_depth)
+        dist = metrics.compare_neighborhoods(a, b)
         return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
-    def abundance(max_depth: int = 1, clr: bool = False):
+    @functools.lru_cache(maxsize=CACHE_SIZE)
+    def _abundance(
+        left: EmbeddingWidgetCollection,
+        right: EmbeddingWidgetCollection,
+        max_depth: int = 1,
+        clr: bool = False,
+    ):
         frequencies = (
-            metrics.neighborhood(left._data, max_depth),
-            metrics.neighborhood(right._data, max_depth),
+            cached_neighborhood(left, max_depth),
+            cached_neighborhood(right, max_depth),
         )
         abundances = [
             metrics.transform_abundance(
@@ -57,8 +78,11 @@ def create_metric_dropdown(
             right.labels.map(label_dist_b - label_dist_a).astype(float),
         )
 
+    def abundance(max_depth: int = 1):
+        return _abundance(left, right, max_depth, clr=False)
+
     def abundance_norm(max_depth: int = 1):
-        return abundance(max_depth, clr=True)
+        return _abundance(left, right, max_depth, clr=True)
 
     default_value = confusion
     if default == "neighborhood":
@@ -142,27 +166,8 @@ def create_update_distance_callback(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,
 ):
-    distances_key: str | None = None
-    distances: pd.Series | None = None
-
     def callback():
-        nonlocal distances_key
-        nonlocal distances
-
-        kwargs = {}
-
-        num_labels = len(set(left.unique_labels + right.unique_labels))
-
-        if has_max_depth(metric_dropdown):
-            key = f"{metric_dropdown.label}:{max_depth_dropdown.value}:{num_labels}"
-            if distances is None or distances_key != key:
-                distances_key = key
-                distances = metric_dropdown.value(max_depth=max_depth_dropdown.value)
-        else:
-            key = f"{metric_dropdown.label}:{num_labels}"
-            if distances is None or distances_key != key:
-                distances_key = key
-                distances = metric_dropdown.value(**kwargs)
+        distances = metric_dropdown.value(max_depth=max_depth_dropdown.value)
 
         for dist, emb in zip(distances, (left, right)):
             if metric_dropdown.label == "Abundance (Absolute)":

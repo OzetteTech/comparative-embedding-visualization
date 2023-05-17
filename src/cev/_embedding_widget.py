@@ -180,3 +180,9 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             to = to if len(to) > 0 else None
         for s in self.scatters:
             s.zoom(to=to)
+
+    def __hash__(self):
+        # this is a hack to make sure that the hash is unique
+        obj_id = str(id(self))
+        # we need to hash the unique labels because
+        return hash(obj_id + "".join(self.unique_labels))

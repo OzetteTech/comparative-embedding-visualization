@@ -40,16 +40,26 @@ def neighborhood(df: pd.DataFrame, max_depth: int = 1) -> pd.DataFrame:
     return pd.DataFrame(neighborhood_scores, index=categories, columns=categories)
 
 
-def compare_neighborhoods(
-    df1: pd.DataFrame, df2: pd.DataFrame, max_depth: int = 1
-) -> dict[str, float]:
-    ma = neighborhood(df1, max_depth)
-    mb = neighborhood(df2, max_depth)
-    overlap = ma.index.intersection(mb.index)
-    dist = {label: 0.0 for label in typing.cast(pd.Series, ma.index.union(mb.index))}
-    sim = 1 - rowise_cosine_similarity(
-        ma.loc[overlap, overlap], mb.loc[overlap, overlap]
-    )
+def compare_neighborhoods(a: pd.DataFrame, b: pd.DataFrame) -> dict[str, float]:
+    """Computes the cosine similarity between two neighborhood matrices.
+
+    Parameters
+    ----------
+    a : pd.DataFrame
+        A symmetric DataFrame with shared rows/cols.
+    b : pd.DataFrame
+        A symmetric DataFrame with shared rows/cols.
+
+    Returns
+    -------
+    dict[str, float]
+        A dictionary mapping labels to cosine similarity.
+    """
+    assert len(a) == len(a.columns)
+    assert len(b) == len(b.columns)
+    overlap = a.index.intersection(b.index)
+    dist = {label: 0.0 for label in typing.cast(pd.Series, a.index.union(b.index))}
+    sim = 1 - rowise_cosine_similarity(a.loc[overlap, overlap], b.loc[overlap, overlap])
     dist.update(sim)
     return dist
 
