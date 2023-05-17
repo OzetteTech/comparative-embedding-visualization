@@ -47,7 +47,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         )
 
         self.labels = labels
-        self.distances = pd.Series(0.0, index=labels.index, dtype="float64")
+        self.distances = pd.Series(0.0, index=self._data.index, dtype="float64")
         self.colormap = create_colormaps(self.robust_labels.cat.categories)
 
         ipywidgets.dlink(
@@ -97,7 +97,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     @traitlets.observe("distances")
     def _on_distances_change(self, change):
-        self._data[_DISTANCE_COLUMN] = change.new
+        self._data[_DISTANCE_COLUMN] = change.new.values
         self._update_metric_scatter()
 
     @traitlets.observe("inverted")
@@ -113,7 +113,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     @traitlets.observe("colormap")
     def _on_colormap_change(self, change):
-        self._update_categorial_scatter()
+        self._update_categorical_scatter()
 
     @classmethod
     def from_embedding(
@@ -159,25 +159,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
 
     def _update_categorical_scatter(self, *args, **kwargs):
         self.categorical_scatter.legend(False)
-        self.categorical_scatter.color(by=_ROBUST_LABEL_COLUMN, map=self._colormap)
-
-    @property
-    def distances(self) -> pd.Series:
-        return self._data[_DISTANCE_COLUMN]
-
-    @distances.setter
-    def distances(self, distances: npt.NDArray[np.float_]):
-        self._data[_DISTANCE_COLUMN] = distances
-        self._update_metric_scatter()
-
-    @property
-    def colormap(self):
-        return self._colormap
-
-    @colormap.setter
-    def colormap(self, cmap: dict):
-        self._colormap = cmap
-        self._update_categorical_scatter()
+        self.categorical_scatter.color(by=_ROBUST_LABEL_COLUMN, map=self.colormap)
 
     @property
     def scatters(self):
