@@ -60,12 +60,6 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         labels = self.labels if ilocs is None else self.labels.iloc[ilocs]
         return {k: int(v) for k, v in labels.value_counts().items()}
 
-    @property
-    def _data(self) -> pd.DataFrame:
-        assert self.categorial_scatter._data is self.metric_scatter._data
-        assert self.categorial_scatter._data is not None
-        return self.categorial_scatter._data
-
     @traitlets.validate("labels")
     def _validate_labels(self, proposal: object):
         assert isinstance(proposal.value, pd.Series)
@@ -85,7 +79,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self._data[_ROBUST_LABEL_COLUMN] = pd.Series(
             np.asarray(self._labeler(labels)), dtype="category"
         )
-        self.logo.counts = self.label_counts(self.categorial_scatter.widget.selection)
+        self.logo.counts = self.label_counts(self.categorical_scatter.widget.selection)
         self.has_markers = "+" in self._data[_LABEL_COLUMN][0]
         self.unique_labels = list(self._data[_LABEL_COLUMN].unique())
 
@@ -112,8 +106,9 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         self.metric_scatter.legend(True)
 
     @traitlets.observe("colormap")
-    def _on_colormap_change(self, change):
-        self._update_categorical_scatter()
+    def _update_categorical_scatter(self, *args, **kwargs):
+        self.categorical_scatter.legend(False)
+        self.categorical_scatter.color(by=_ROBUST_LABEL_COLUMN, map=self.colormap)
 
     @classmethod
     def from_embedding(
@@ -156,10 +151,6 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
     @property
     def robust_labels(self) -> pd.Series:
         return self._data[_ROBUST_LABEL_COLUMN]
-
-    def _update_categorical_scatter(self, *args, **kwargs):
-        self.categorical_scatter.legend(False)
-        self.categorical_scatter.color(by=_ROBUST_LABEL_COLUMN, map=self.colormap)
 
     @property
     def scatters(self):
