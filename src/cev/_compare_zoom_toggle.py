@@ -23,10 +23,10 @@ def create_zoom_toggle(
 
         return on_change
 
-    left.categorial_scatter.widget.observe(
+    left.categorical_scatter.widget.observe(
         handle_selection_change_zoom(left), names="selection"
     )
-    right.categorial_scatter.widget.observe(
+    right.categorical_scatter.widget.observe(
         handle_selection_change_zoom(right), names="selection"
     )
 
@@ -35,8 +35,8 @@ def create_zoom_toggle(
             left.zoom(to=None)
             right.zoom(to=None)
         else:
-            left.zoom(to=left.categorial_scatter.selection())
-            right.zoom(to=right.categorial_scatter.selection())
+            left.zoom(to=left.categorical_scatter.selection())
+            right.zoom(to=right.categorical_scatter.selection())
 
     zoom.observe(handle_zoom_change, names="value")
     return zoom

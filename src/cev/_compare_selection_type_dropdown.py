@@ -36,8 +36,8 @@ def create_selection_type_dropdown(
             unlink()
 
         unlink = link_widgets(
-            (left.categorial_scatter.widget, "selection"),
-            (right.categorial_scatter.widget, "selection"),
+            (left.categorical_scatter.widget, "selection"),
+            (right.categorical_scatter.widget, "selection"),
         ).unlink
 
     # requires label-label correspondence
@@ -53,19 +53,19 @@ def create_selection_type_dropdown(
 
                 for emb in (left, right):
                     ilocs = np.where(emb.robust_labels.isin(phenotypes))[0]
-                    emb.categorial_scatter.widget.selection = ilocs
+                    emb.categorical_scatter.widget.selection = ilocs
                     emb.metric_scatter.widget.selection = ilocs
 
             return handler
 
         transform_left = expand_phenotype(left)
-        left.categorial_scatter.widget.observe(transform_left, names="selection")
+        left.categorical_scatter.widget.observe(transform_left, names="selection")
         transform_right = expand_phenotype(right)
-        right.categorial_scatter.widget.observe(transform_right, names="selection")
+        right.categorical_scatter.widget.observe(transform_right, names="selection")
 
         def unlink_all():
-            left.categorial_scatter.widget.unobserve(transform_left, names="selection")
-            right.categorial_scatter.widget.unobserve(
+            left.categorical_scatter.widget.unobserve(transform_left, names="selection")
+            right.categorical_scatter.widget.unobserve(
                 transform_right, names="selection"
             )
 
