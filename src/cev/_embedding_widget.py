@@ -21,7 +21,6 @@ _DISTANCE_COLUMN = "distance"
 
 class EmbeddingWidgetCollection(traitlets.HasTraits):
     inverted = traitlets.Bool(default_value=False)
-    unique_labels = traitlets.List(trait=traitlets.Unicode, default_value=[])
     labels = traitlets.Any()
     distances = traitlets.Any()
     colormap = traitlets.Dict()
@@ -81,7 +80,6 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         )
         self.logo.counts = self.label_counts(self.categorical_scatter.widget.selection)
         self.has_markers = "+" in self._data[_LABEL_COLUMN][0]
-        self.unique_labels = list(self._data[_LABEL_COLUMN].unique())
 
     @traitlets.validate("distances")
     def _validate_distances(self, proposal: object):
@@ -182,7 +180,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             s.zoom(to=to)
 
     def __hash__(self):
-        # this is a hack to make sure that the hash is unique
+        # Warning: this is a hack! You should probably not rely on this hash
+        # unless you know what you're doing.
+        #
+        # Creates a unique hash for the current "state" of this object
+        # to make sure that functools caching works correctly.
+        # See the usage in cev._compare_metrics_dropdown
         obj_id = str(id(self))
-        # we need to hash the unique labels because
-        return hash(obj_id + "".join(self.unique_labels))
+        categories = ",".join(self.labels.cat.categories.to_list())
+        return hash(obj_id + categories)
