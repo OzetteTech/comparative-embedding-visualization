@@ -19,7 +19,9 @@ CACHE_SIZE = 5
 def create_metric_dropdown(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,
-    default: str | None = "confusion",
+    default: typing.Literal[
+        "confusion", "neigbhorhood", "abundance", "abundance_norm"
+    ] = "confusion",
 ):
     @functools.lru_cache(maxsize=CACHE_SIZE)
     def cached_confusion(emb: EmbeddingWidgetCollection):
@@ -29,22 +31,8 @@ def create_metric_dropdown(
     def cached_neighborhood(emb: EmbeddingWidgetCollection, max_depth: int = 1):
         return metrics.neighborhood(emb._data, max_depth=max_depth)
 
-    def confusion(**kwargs):
-        left_label_confusion = cached_confusion(left)
-        right_label_confusion = cached_confusion(right)
-        return (
-            left.labels.map(left_label_confusion).astype(float),
-            right.labels.map(right_label_confusion).astype(float),
-        )
-
-    def neighborhood(max_depth: int = 1):
-        a = cached_neighborhood(left, max_depth)
-        b = cached_neighborhood(right, max_depth)
-        dist = metrics.compare_neighborhoods(a, b)
-        return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
-
     @functools.lru_cache(maxsize=CACHE_SIZE)
-    def _abundance(
+    def cached_abundance(
         left: EmbeddingWidgetCollection,
         right: EmbeddingWidgetCollection,
         max_depth: int = 1,
@@ -78,19 +66,29 @@ def create_metric_dropdown(
             right.labels.map(label_dist_b - label_dist_a).astype(float),
         )
 
-    def abundance(max_depth: int = 1):
-        return _abundance(left, right, max_depth, clr=False)
+    def confusion(**kwargs):
+        left_label_confusion = cached_confusion(left)
+        right_label_confusion = cached_confusion(right)
+        return (
+            left.labels.map(left_label_confusion).astype(float),
+            right.labels.map(right_label_confusion).astype(float),
+        )
 
-    def abundance_norm(max_depth: int = 1):
-        return _abundance(left, right, max_depth, clr=True)
+    def neighborhood(max_depth: int = 1):
+        a = cached_neighborhood(left, max_depth)
+        b = cached_neighborhood(right, max_depth)
+        dist = metrics.compare_neighborhoods(a, b)
+        return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
-    default_value = confusion
-    if default == "neighborhood":
-        default_value = neighborhood
-    elif default == "abundance":
-        default_value = abundance
-    elif default == "abundance_norm":
-        default_value = abundance_norm
+    abundance = functools.partial(cached_abundance, left, right)
+    abundance_norm = functools.partial(cached_abundance, left, right, clr=True)
+
+    default_value = {
+        "confusion": confusion,
+        "neighborhood": neighborhood,
+        "abundance": abundance,
+        "abundance_norm": abundance_norm,
+    }[default]
 
     return ipywidgets.Dropdown(
         options=[
