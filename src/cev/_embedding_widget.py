@@ -65,7 +65,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         # convert to category if not already
         return (
             proposal.value
-            if proposal.value == "category"
+            if proposal.value.dtype.name == "category"
             else proposal.value.astype("category")
         )
 
