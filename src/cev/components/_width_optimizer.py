@@ -5,6 +5,7 @@ __all__ = ["WidthOptimizer"]
 
 class WidthOptimizer(anywidget.AnyWidget):
     """This widget gets rid of unwanted whitespace in front of ipywidgets"""
+
     _esm = """
     export function render(view) {
       setTimeout(() => {
