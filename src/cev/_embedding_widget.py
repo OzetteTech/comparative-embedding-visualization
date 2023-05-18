@@ -62,8 +62,12 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
     @traitlets.validate("labels")
     def _validate_labels(self, proposal: object):
         assert isinstance(proposal.value, pd.Series)
-        assert proposal.value.dtype == "category"
-        return proposal.value
+        # convert to category if not already
+        return (
+            proposal.value
+            if proposal.value == "category"
+            else proposal.value.astype("category")
+        )
 
     @property
     def _data(self) -> pd.DataFrame:
