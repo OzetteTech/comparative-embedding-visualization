@@ -62,20 +62,41 @@ def parse_label(label: str) -> list[Marker]:
     ]
 
 
-def trim_label_series(labels: pd.Series, active_markers: set(str)):
-    splitted_labels = [
-        marker for marker in labels.str.split("(\w+[\+|\-])", regex=True)
-    ]
+def trim_label_series(labels: pd.Series, active_markers: set[str]):
+    """
+    Trims the labels to only contain the active markers.
 
-    out = []
-    for splitted_label in splitted_labels:
-        out.append(
-            "".join(
-                [marker for marker in splitted_label if marker[0:-1] in active_markers]
-            )
-        )
+    Parameters
+    ----------
+    labels
+        The labels to trim. Must be a categorical series with values like "CD8+CD4-".
+    active_markers
+        The markers to keep. Must be a set of strings like {"CD8", "CD4"}.
 
-    return out
+    Returns
+    -------
+    pd.Series
+        The trimmed labels.
+    """
+    # we only need to look at the categories, not the values
+    # to compute all the possible new labels
+    expanded = labels.cat.categories.str.split("(\w+[\+|\-])", regex=True)
+
+    # find the column indices of the active markers in the expanded labels
+    column_indices = []
+    for i, marker in enumerate(expanded[0]):
+        if marker[:-1] in active_markers:
+            column_indices.append(i)
+
+    # create the new label for each category by concatenating the active markers
+    new_categories = pd.Series([""] * len(expanded))
+    for column_index in column_indices:
+        new_categories += expanded.str[column_index]
+
+    # Index the new categories by the previous codes.
+    # This creates a new array with all the updated labels.
+    new_labels = new_categories[labels.cat.codes]
+    return pd.Series(new_labels, dtype="category")
 
 
 def add_ilocs_trait(
