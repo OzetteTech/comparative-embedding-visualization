@@ -52,7 +52,9 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
         left_embedding: Embedding,
         right_embedding: Embedding,
         row_height: int = 250,
-        metric: None | str = None,
+        metric: typing.Literal[
+            "confusion", "neigbhorhood", "abundance", "abundance_norm"
+        ] = "confusion",
         inverted_colormap: bool = False,
         auto_zoom: bool = False,
         selection: typing.Literal["independent", "synced", "phenotype"] = "independent",
