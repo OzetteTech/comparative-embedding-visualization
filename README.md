@@ -29,6 +29,8 @@
 
 ## Installation
 
+> **Warning**: `cev` is new and under active development. It is not yet ready for production and APIs are subject to change.
+
 ```sh
 pip install cev
 ```
