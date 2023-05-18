@@ -6,11 +6,13 @@ __all__ = ["MarkerSelectionIndicator"]
 
 class MarkerSelectionIndicator(anywidget.AnyWidget):
     _esm = """
-    const BUTTON_BG = "#eee";
-    const BUTTON_HOVER_BG = "#ddd";
+    const FONT_COLOR = "var(--jp-ui-font-color0)";
+    const FONT_COLOR_SECONDARY = "var(--jp-ui-font-color1)";
+    const BUTTON_BG = "var(--jp-layout-color2)";
+    const BUTTON_HOVER_BG = "var(--jp-layout-color2)";
     const BUTTON_ACTIVE_BG = "#1976d2";
     const BUTTON_ACTIVE_HOVER_BG = "#0069d3";
-    const BUTTON_ACTIVE_SECONDARY_BG = "black";
+    const BUTTON_ACTIVE_SECONDARY_BG = "var(--jp-ui-font-color3)";
     const NATURAL_COMPARATOR = new Intl.Collator(undefined, { numeric: true }).compare;
     
     export async function render(view) {
@@ -53,7 +55,7 @@ class MarkerSelectionIndicator(anywidget.AnyWidget):
       const sortImportance = document.createElement("button");
       sortImportance.textContent = "Expression Discriminability";
       Object.assign(sortImportance.style, {
-        background: view.model.get("sort_alphabetically") ? "white" : BUTTON_ACTIVE_SECONDARY_BG,
+        background: view.model.get("sort_alphabetically") ? BUTTON_BG : BUTTON_ACTIVE_SECONDARY_BG,
         border: `1px solid ${view.model.get("sort_alphabetically") ? BUTTON_BG : BUTTON_ACTIVE_SECONDARY_BG}`,
         borderRadius: "4px 0 0 4px",
         userSelect: "none",
@@ -67,7 +69,7 @@ class MarkerSelectionIndicator(anywidget.AnyWidget):
       const sortAlphabetically = document.createElement("button");
       sortAlphabetically.textContent = "Alphabetically";
       Object.assign(sortAlphabetically.style, {
-        background: view.model.get("sort_alphabetically") ? BUTTON_ACTIVE_SECONDARY_BG : "white",
+        background: view.model.get("sort_alphabetically") ? BUTTON_ACTIVE_SECONDARY_BG : BUTTON_BG,
         border: `1px solid ${view.model.get("sort_alphabetically") ? BUTTON_ACTIVE_SECONDARY_BG : BUTTON_BG}`,
         borderRadius: "0 4px 4px 0",
         marginLeft: "-1px",
@@ -166,7 +168,7 @@ class MarkerSelectionIndicator(anywidget.AnyWidget):
             child.style.color = "white";
             child.style.setProperty("--marker-selection-indicator-bg", BUTTON_ACTIVE_BG);
           } else {
-            child.style.color = "black";
+            child.style.color = FONT_COLOR;
             child.style.setProperty("--marker-selection-indicator-bg", BUTTON_BG);
           }
           
@@ -178,18 +180,18 @@ class MarkerSelectionIndicator(anywidget.AnyWidget):
           
           child.textContent = markers[i];
         }
-        
-        Object.assign(sortImportance.style, {
-          background: view.model.get("sort_alphabetically") ? "white" : BUTTON_ACTIVE_SECONDARY_BG,
-          border: `1px solid ${view.model.get("sort_alphabetically") ? BUTTON_BG : BUTTON_ACTIVE_SECONDARY_BG}`,
-          color: view.model.get("sort_alphabetically") ? "black" : "white",
+
+        const isAlphabetically = view.model.get("sort_alphabetically");
+        const isImportance = !isAlphabetically;
+
+        const getButtonStyle = (active) => ({
+          background: active ? BUTTON_ACTIVE_SECONDARY_BG : BUTTON_BG,
+          border: 0,
+          color: active ? FONT_COLOR : FONT_COLOR_SECONDARY,
         });
 
-        Object.assign(sortAlphabetically.style, {
-          background: view.model.get("sort_alphabetically") ? BUTTON_ACTIVE_SECONDARY_BG : "white",
-          border: `1px solid ${view.model.get("sort_alphabetically") ? BUTTON_ACTIVE_SECONDARY_BG : BUTTON_BG}`,
-          color: view.model.get("sort_alphabetically") ? "white" : "black",
-        });
+        Object.assign(sortImportance.style, getButtonStyle(isImportance));
+        Object.assign(sortAlphabetically.style, getButtonStyle(isAlphabetically));
       }
       
       view.model.on("change:markers", rerender);

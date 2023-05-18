@@ -20,7 +20,7 @@ from cev._compare_selection_type_dropdown import create_selection_type_dropdown
 from cev._compare_zoom_toggle import create_zoom_toggle
 from cev._embedding import Embedding
 from cev._widget_utils import add_ilocs_trait, parse_label
-from cev.components import MarkerSelectionIndicator
+from cev.components import MarkerSelectionIndicator, WidthOptimizer
 
 
 def _create_titles(
@@ -28,7 +28,7 @@ def _create_titles(
 ) -> tuple[ipywidgets.Widget, ipywidgets.Widget]:
     left_title, right_title = titles
     spacer = ipywidgets.HTML(
-        value='<div style="height: 1px; background: #efefef;" />',
+        value='<div style="height: 1px; background: var(--jp-border-color0);" />',
         layout=ipywidgets.Layout(width="100%"),
     )
     title_widget = ipywidgets.HBox(
@@ -129,6 +129,7 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
         # Header
         settings = ipywidgets.HBox(
             [
+                WidthOptimizer(),
                 metric_dropdown,
                 inverted,
                 value_range_slider,
