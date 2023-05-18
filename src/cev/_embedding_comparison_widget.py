@@ -28,7 +28,7 @@ def _create_titles(
 ) -> tuple[ipywidgets.Widget, ipywidgets.Widget]:
     left_title, right_title = titles
     spacer = ipywidgets.HTML(
-        value='<div style="height: 1px; background: #efefef;" />',
+        value='<div style="height: 1px; background: var(--jp-border-color0);" />',
         layout=ipywidgets.Layout(width="100%"),
     )
     title_widget = ipywidgets.HBox(
