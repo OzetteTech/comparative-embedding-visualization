@@ -116,7 +116,7 @@ def create_value_range_slider(metric_dropdown: ipywidgets.Dropdown):
         min=0,
         max=1,
         step=0.05,
-        description="Color Range:",
+        description="Range:",
         continuous_update=False,
         orientation="horizontal",
         readout=True,
@@ -172,7 +172,7 @@ def create_update_distance_callback(
                     diverging_cmap,
                     diverging_cmap[::-1],
                     [-vmax, vmax],
-                    ("Lower", "Higher", "Abs. Abundance Difference"),
+                    ("Lower", "Higher", "Abs. Abundance"),
                 )
             elif metric_dropdown.label == "Abundance (Normalized)":
                 lower, upper = dist.quantile(value_range_slider.value)
@@ -181,7 +181,7 @@ def create_update_distance_callback(
                     diverging_cmap,
                     diverging_cmap[::-1],
                     [-vmax, vmax],
-                    ("Lower", "Higher", "Rel. Abundance Difference"),
+                    ("Lower", "Higher", "Rel. Abundance"),
                 )
             elif metric_dropdown.label == "Confusion":
                 emb.metric_color_options = (
