@@ -65,7 +65,7 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
         # convert to category if not already
         return (
             proposal.value
-            if proposal.value == "category"
+            if not pd.api.types.is_categorical_dtype(proposal.value)
             else proposal.value.astype("category")
         )
 
