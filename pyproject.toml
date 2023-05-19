@@ -39,8 +39,6 @@ dev = [
     "ruff",
 ]
 notebooks = [
-    "snakemake",
-    "seaborn",
     "pyarrow",
     "fastparquet",
     "matplotlib",
