@@ -26,7 +26,6 @@ dependencies = [
     "jinja2>=3.0.0",
     "jupyter-scatter>=0.12.2",
     "pandas>=1.0,<2.0",
-    "scipy>=1.10.1",
 ]
 dynamic = ["version"]
 
@@ -40,8 +39,6 @@ dev = [
     "ruff",
 ]
 notebooks = [
-    "snakemake",
-    "seaborn",
     "pyarrow",
     "fastparquet",
     "matplotlib",
