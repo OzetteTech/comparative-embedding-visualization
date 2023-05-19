@@ -87,6 +87,8 @@ class MarkerCompositionLogo(HTMLWidget):
                     .attr("text-anchor", "middle")
                     .attr("x", d => width / 2)
                     .attr("y", d => d[1][0] * height + (d[1][1] * height / 2))
+                    .attr("fill", "currentColor")
+                    .style("color", "var(--jp-ui-font-color0)")
                     .text(d => d[1][1] < 0.2 ? "" : "-")
             })
     </script>
