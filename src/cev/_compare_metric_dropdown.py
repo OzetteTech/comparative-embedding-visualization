@@ -19,9 +19,7 @@ CACHE_SIZE = 5
 def create_metric_dropdown(
     left: EmbeddingWidgetCollection,
     right: EmbeddingWidgetCollection,
-    default: typing.Literal[
-        "confusion", "neigbhorhood", "abundance", "abundance_norm"
-    ] = "confusion",
+    default: typing.Literal["confusion", "neigbhorhood", "abundance"] = "confusion",
 ):
     @functools.lru_cache(maxsize=CACHE_SIZE)
     def cached_confusion(emb: EmbeddingWidgetCollection):
@@ -36,7 +34,6 @@ def create_metric_dropdown(
         left: EmbeddingWidgetCollection,
         right: EmbeddingWidgetCollection,
         max_depth: int = 1,
-        clr: bool = False,
     ):
         frequencies = (
             cached_neighborhood(left, max_depth),
@@ -46,7 +43,7 @@ def create_metric_dropdown(
             metrics.transform_abundance(
                 freq,
                 abundances=emb.labels.value_counts().to_dict(),
-                clr=clr,
+                clr=True,
             )
             for freq, emb in zip(frequencies, (left, right))
         ]
@@ -81,21 +78,18 @@ def create_metric_dropdown(
         return left.labels.map(dist).astype(float), right.labels.map(dist).astype(float)
 
     abundance = functools.partial(cached_abundance, left, right)
-    abundance_norm = functools.partial(cached_abundance, left, right, clr=True)
 
     default_value = {
         "confusion": confusion,
         "neighborhood": neighborhood,
         "abundance": abundance,
-        "abundance_norm": abundance_norm,
     }[default]
 
     return ipywidgets.Dropdown(
         options=[
             ("Confusion", confusion),
             ("Neighborhood", neighborhood),
-            ("Abundance (Absolute)", abundance),
-            ("Abundance (Normalized)", abundance_norm),
+            ("Abundance", abundance),
         ],
         value=default_value,
         description="Metric",
@@ -168,16 +162,7 @@ def create_update_distance_callback(
         distances = metric_dropdown.value(max_depth=max_depth_dropdown.value)
 
         for dist, emb in zip(distances, (left, right)):
-            if metric_dropdown.label == "Abundance (Absolute)":
-                lower, upper = dist.quantile(value_range_slider.value)
-                vmax = max(abs(lower), abs(upper))
-                emb.metric_color_options = (
-                    diverging_cmap,
-                    diverging_cmap[::-1],
-                    [-vmax, vmax],
-                    ("Lower", "Higher", "Abs. Abundance"),
-                )
-            elif metric_dropdown.label == "Abundance (Normalized)":
+            if metric_dropdown.label == "Abundance":
                 lower, upper = dist.quantile(value_range_slider.value)
                 vmax = max(abs(lower), abs(upper))
                 emb.metric_color_options = (
