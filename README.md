@@ -35,6 +35,29 @@
 pip install cev
 ```
 
+## Getting Started
+
+```py
+import pandas as pd
+from cev.widgets import Embedding, EmbeddingComparisonWidget
+
+umap_embedding = Embedding.from_ozette(df=pd.read_parquet("../data/mair-2022-tissue-138-umap.pq"))
+ozette_embedding = Embedding.from_ozette(df=pd.read_parquet("../data/mair-2022-tissue-138-ozette.pq"))
+
+umap_vs_ozette = EmbeddingComparisonWidget(
+    umap_embedding,
+    ozette_embedding,
+    titles=["Standard UMAP", "Annotation-Transformed UMAP"],
+    metric="confusion",
+    selection="synced",
+    auto_zoom=True,
+    row_height=320,
+)
+umap_vs_ozette
+```
+
+See [notebooks/getting-started.ipynb](notebooks/getting-started.ipynb) for the complete example.
+
 ## Development
 
 First, create a virtual environment with all the required dependencies. We highly recommend to use [`hatch`](https://github.com/pypa/hatch), which installs and sync all dependencies from `pyproject.toml` automatically.
