@@ -2,6 +2,7 @@
   Comparative Embedding Visualization with <code>cev</code>
 </h1>
 
+
 <div align="center">
   
   [![pypi version](https://img.shields.io/badge/ozette-technologies-ozette.svg?color=0072E1&labelColor=0B1117&style=flat-square)](https://ozette.com/)
