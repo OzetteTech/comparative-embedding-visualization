@@ -2,6 +2,7 @@
   Comparative Embedding Visualization with <code>cev</code>
 </h1>
 
+
 <div align="center">
   
   [![pypi version](https://img.shields.io/badge/ozette-technologies-ozette.svg?color=0072E1&labelColor=0B1117&style=flat-square)](https://ozette.com/)
@@ -38,6 +39,29 @@
 ```sh
 pip install cev
 ```
+
+## Getting Started
+
+```py
+import pandas as pd
+from cev.widgets import Embedding, EmbeddingComparisonWidget
+
+umap_embedding = Embedding.from_ozette(df=pd.read_parquet("../data/mair-2022-tissue-138-umap.pq"))
+ozette_embedding = Embedding.from_ozette(df=pd.read_parquet("../data/mair-2022-tissue-138-ozette.pq"))
+
+umap_vs_ozette = EmbeddingComparisonWidget(
+    umap_embedding,
+    ozette_embedding,
+    titles=["Standard UMAP", "Annotation-Transformed UMAP"],
+    metric="confusion",
+    selection="synced",
+    auto_zoom=True,
+    row_height=320,
+)
+umap_vs_ozette
+```
+
+See [notebooks/getting-started.ipynb](notebooks/getting-started.ipynb) for the complete example.
 
 ## Development
 
