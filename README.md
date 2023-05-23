@@ -61,6 +61,10 @@ umap_vs_ozette = EmbeddingComparisonWidget(
 umap_vs_ozette
 ```
 
+<img width="1269" alt="User interface of cev's comparison widget" src="https://github.com/OzetteTech/comparative-embedding-visualization/assets/84813279/db28944b-fa36-475c-b3b9-efd07272e1b9">
+
+
+
 See [notebooks/getting-started.ipynb](notebooks/getting-started.ipynb) for the complete example.
 
 ## Development
