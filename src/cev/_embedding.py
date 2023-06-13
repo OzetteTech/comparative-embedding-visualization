@@ -33,10 +33,10 @@ class Embedding:
         coords, labels, robust = _prepare_ozette(df, **kwargs)
         return cls(coords=coords, labels=labels, robust=robust)
 
-    def widgets(self):
+    def widgets(self, **kwargs):
         from ._embedding_widget import EmbeddingWidgetCollection
 
-        return EmbeddingWidgetCollection.from_embedding(self)
+        return EmbeddingWidgetCollection.from_embedding(self, **kwargs)
 
 
 def _prepare_ozette(df: pd.DataFrame, robust_only: bool = True):
