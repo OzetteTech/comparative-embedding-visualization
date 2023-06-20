@@ -11,7 +11,12 @@ import pandas as pd
 import traitlets
 
 from cev._embedding import Embedding
-from cev._widget_utils import create_colormaps, link_widgets, robust_labels
+from cev._widget_utils import (
+    NON_ROBUST_LABEL,
+    create_colormaps,
+    link_widgets,
+    robust_labels,
+)
 from cev.components import MarkerCompositionLogo
 
 _LABEL_COLUMN = "label"
@@ -83,7 +88,13 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             np.asarray(self._labeler(labels)), dtype="category"
         )
         self.logo.counts = self.label_counts(self.categorical_scatter.widget.selection)
-        self.has_markers = "+" in self._data[_LABEL_COLUMN][0]
+        self.has_markers = (
+            isinstance(self._data[_LABEL_COLUMN][0], str)
+            and "+" in self._data[_LABEL_COLUMN][0]
+        )
+        self.metric_scatter.filter(
+            np.argwhere(self.robust_labels.values != NON_ROBUST_LABEL)
+        )
 
     @traitlets.validate("distances")
     def _validate_distances(self, proposal: object):
