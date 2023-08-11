@@ -9,6 +9,7 @@
   [![pypi version](https://img.shields.io/pypi/v/cev.svg?color=0072E1&labelColor=0B1117&style=flat-square)](https://pypi.org/project/cev/)
   [![build status](https://img.shields.io/github/actions/workflow/status/OzetteTech/comparative-embedding-visualization/ci.yml?branch=main&color=0072E1&labelColor=0B1117&style=flat-square)](https://github.com/OzetteTech/comparative-embedding-visualization/actions?query=workflow%3ARelease)
   [![notebook examples](https://img.shields.io/badge/notebook-examples-0072E1.svg?labelColor=0B1117&style=flat-square)](notebooks)
+  [![ISMB BioVis 2023 Poster](https://img.shields.io/badge/ISMB_BioVis_'23-poster-0072E1.svg?labelColor=0B1117&style=flat-square)](ismb-biovis-2023-poster.jpg)
   
 </div>
 
