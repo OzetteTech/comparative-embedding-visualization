@@ -132,10 +132,13 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
                 axes=axes,
                 opacity_by="density",
                 lasso_initiator=False,
+                tooltip=True,
+                tooltip_contents=("color"),
                 **kwargs,
             )
             for _ in range(2)
         )
+
         # link the plots together with js
         link_widgets(
             (categorical_scatter.widget, "selection"),
