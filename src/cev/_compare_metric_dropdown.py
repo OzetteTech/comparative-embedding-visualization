@@ -183,7 +183,7 @@ def create_update_distance_callback(
                     "viridis",
                     "viridis_r",
                     value_range_slider.value,
-                    ("Low", "High", "Neighborhood"),
+                    ("Similar", "Dissimilar", "Neighborhood"),
                 )
             else:
                 raise ValueError(
