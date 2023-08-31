@@ -36,7 +36,7 @@ def confusion(df: pd.DataFrame) -> pd.Series:
 def neighborhood(df: pd.DataFrame, max_depth: int = 1) -> pd.DataFrame:
     categories = df["label"].cat.categories
     neighborhood_scores = cev_metrics.neighborhood(df, max_depth)
-    np.fill_diagonal(neighborhood_scores, 1)
+    np.fill_diagonal(neighborhood_scores, 0)
     return pd.DataFrame(neighborhood_scores, index=categories, columns=categories)
 
 
