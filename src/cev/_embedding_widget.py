@@ -11,7 +11,12 @@ import pandas as pd
 import traitlets
 
 from cev._embedding import Embedding
-from cev._widget_utils import create_colormaps, link_widgets, robust_labels
+from cev._widget_utils import (
+    NON_ROBUST_LABEL,
+    create_colormaps,
+    link_widgets,
+    robust_labels,
+)
 from cev.components import MarkerCompositionLogo
 
 _LABEL_COLUMN = "label"
@@ -106,6 +111,13 @@ class EmbeddingWidgetCollection(traitlets.HasTraits):
             labeling=labeling,
         )
         self.metric_scatter.legend(True)
+
+        self.metric_scatter.filter(None)
+        robust_labels = self._data.query(
+            f"{_ROBUST_LABEL_COLUMN} != '{NON_ROBUST_LABEL}'"
+        )
+        if len(robust_labels):
+            self.metric_scatter.filter(robust_labels.index)
 
     @traitlets.observe("colormap")
     def _update_categorical_scatter(self, *args, **kwargs):
