@@ -60,11 +60,11 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
         self,
         left_embedding: Embedding | pd.DataFrame,
         right_embedding: Embedding | pd.DataFrame,
-        row_height: int = 250,
+        row_height: int = 320,
         metric: typing.Literal["confusion", "neigbhorhood", "abundance"] = "confusion",
         inverted_colormap: bool = False,
-        auto_zoom: bool = False,
-        selection: typing.Literal["independent", "synced", "phenotype"] = "independent",
+        auto_zoom: bool = True,
+        selection: typing.Literal["independent", "synced", "phenotype"] = "phenotype",
         max_depth: int = 1,
         titles: tuple[str, str] | None = None,
         active_markers: list[str] | typing.Literal["all"] = "all",
@@ -118,9 +118,7 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
             )
 
         zoom = create_zoom_toggle(self.left, self.right, auto_zoom)
-        inverted = create_invert_color_checkbox(
-            self.left, self.right, inverted_colormap
-        )
+        create_invert_color_checkbox(self.left, self.right, inverted_colormap)
 
         selection_type = create_selection_type_dropdown(
             self.left,
@@ -140,11 +138,11 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
             [
                 WidthOptimizer(),
                 metric_dropdown,
-                inverted,
-                value_range_slider,
+                # inverted,
+                # value_range_slider,
                 selection_type,
                 zoom,
-                max_depth_dropdown,
+                # max_depth_dropdown,
             ]
         )
         header = [marker_selection, settings] if has_markers else [settings]
@@ -167,6 +165,14 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
 
         super().__init__(sections)
         add_ilocs_trait(self, self.left, self.right)
+        if has_markers:
+
+            def on_change(_):
+                reset_color_domain(self.left.categorical_scatter)
+                reset_color_domain(self.right.categorical_scatter)
+
+            marker_selection.observe(on_change, names="active")
+            on_change(None)
 
     @property
     def embeddings(self):
@@ -209,3 +215,11 @@ class EmbeddingComparisonWidget(ipywidgets.VBox):
             print(f"Found {len(point_idxs)} points")
             for scatter in embedding_widget.scatters:
                 scatter.selection(point_idxs)
+
+
+def reset_color_domain(scatter):
+    color_domain = scatter.widget.color_domain
+    new_color_domain = {
+        " ".join(re.findall(r"(\w+)\+", k)): v for k, v in color_domain.items()
+    }
+    scatter.widget.color_domain = new_color_domain
