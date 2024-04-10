@@ -1,0 +1,40 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
+title: "cev"
+authors:
+  - given-names: "Trevor"
+    family-names: "Manz"
+    orcid: "https://orcid.org/0000-0001-7694-5164"
+    affiliation: "Harvard Medical School"
+  - given-names: "Fritz"
+    family-names: "Lekschas"
+    orcid: "https://orcid.org/0000-0001-8432-4835"
+    affiliation: "Ozette Technologies"
+url: "https://github.com/OzetteTech/comparative-embedding-visualization"
+preferred-citation:
+  type: article
+  title: "A General Framework for Comparing Embedding Visualizations Across Class-Label Hierarchies"
+  authors:
+    - given-names: "Trevor"
+      family-names: "Manz"
+      orcid: "https://orcid.org/0000-0001-7694-5164"
+      affiliation: "Harvard Medical School"
+    - given-names: "Fritz"
+      family-names: "Lekschas"
+      orcid: "https://orcid.org/0000-0001-8432-4835"
+      affiliation: "Ozette Technologies"
+    - given-names: "Evan"
+      family-names: "Greene"
+      affiliation: "Ozette Technologies"
+    - given-names: "Greg"
+      family-names: "Finak"
+      orcid: "https://orcid.org/0000-0003-4341-9090"
+      affiliation: "Ozette Technologies"
+    - given-names: "Nils"
+      family-names: "Gehlenborg"
+      affiliation: "Harvard Medical School"
+      orcid: "https://orcid.org/0000-0003-0327-8297"
+  doi: "10.31219/osf.io/puxnf"
+  journal: "OSF Preprints"
+  month: 4
+  year: 2024

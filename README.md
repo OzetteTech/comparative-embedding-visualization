@@ -132,3 +132,19 @@ git push --follow-tags
 ## License
 
 `cev` is distributed under the terms of the [Apache License 2.0](LICENSE).
+
+## Citation
+
+If you use `cev` in your research, please cite the following preprint:
+
+```bibtex
+@article{manz2024cev,
+ title={A General Framework for Comparing Embedding Visualizations Across Class-Label Hierarchies},
+ url={osf.io/puxnf},
+ DOI={10.31219/osf.io/puxnf},
+ publisher={OSF Preprints},
+ author={Manz, Trevor and Lekschas, Fritz and Greene, Evan and Finak, Greg and Gehlenborg, Nils},
+ year={2024},
+ month={Apr}
+}
+```
