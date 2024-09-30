@@ -138,13 +138,16 @@ git push --follow-tags
 If you use `cev` in your research, please cite the following preprint:
 
 ```bibtex
-@article{manz2024cev,
- title={A General Framework for Comparing Embedding Visualizations Across Class-Label Hierarchies},
- url={osf.io/puxnf},
- DOI={10.31219/osf.io/puxnf},
- publisher={OSF Preprints},
- author={Manz, Trevor and Lekschas, Fritz and Greene, Evan and Finak, Greg and Gehlenborg, Nils},
- year={2024},
- month={Apr}
+@article{manz2024general,
+  title = {A General Framework for Comparing Embedding Visualizations Across Class-Label Hierarchies},
+  author = {Trevor Manz and Fritz Lekschas and Evan Greene and Greg Finak and Nils Gehlenborg},
+  url = {https://doi.org/10.1109/TVCG.2024.3456370},
+  doi = {10.1109/TVCG.2024.3456370},
+  journal = {IEEE Transactions on Visualization and Computer Graphics},
+  series = {VIS ’24},
+  publisher = {IEEE},
+  year = {2024},
+  month = {9},
+  pages = {1-11}
 }
 ```
