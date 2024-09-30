@@ -1,6 +1,5 @@
-cff-version: 1.2.0
-message: "If you use this software, please cite it using these metadata."
-title: "cev"
+cff-version: "1.2.0"
+title: "A General Framework for Comparing Embedding Visualizations Across Class-Label Hierarchies"
 authors:
   - given-names: "Trevor"
     family-names: "Manz"
@@ -10,7 +9,20 @@ authors:
     family-names: "Lekschas"
     orcid: "https://orcid.org/0000-0001-8432-4835"
     affiliation: "Ozette Technologies"
+  - given-names: "Evan"
+    family-names: "Greene"
+    affiliation: "Ozette Technologies"
+  - given-names: "Greg"
+    family-names: "Finak"
+    orcid: "https://orcid.org/0000-0003-4341-9090"
+    affiliation: "Ozette Technologies"
+  - given-names: "Nils"
+    family-names: "Gehlenborg"
+    affiliation: "Harvard Medical School"
+    orcid: "https://orcid.org/0000-0003-0327-8297"
 url: "https://github.com/OzetteTech/comparative-embedding-visualization"
+message: If you use this software, please cite our article in the
+  IEEE Transactions on Visualization and Computer Graphics.
 preferred-citation:
   type: article
   title: "A General Framework for Comparing Embedding Visualizations Across Class-Label Hierarchies"
@@ -34,7 +46,11 @@ preferred-citation:
       family-names: "Gehlenborg"
       affiliation: "Harvard Medical School"
       orcid: "https://orcid.org/0000-0003-0327-8297"
-  doi: "10.31219/osf.io/puxnf"
-  journal: "OSF Preprints"
-  month: 4
+  date-published: 2024-09-10
+  doi: "10.1109/TVCG.2024.3456370"
+  journal: "Transactions on Visualization and Computer Graphics"
+  publisher:
+    name: IEEE
+  url: "https://ieeexplore.ieee.org/document/10672535"
+  month: 9
   year: 2024
