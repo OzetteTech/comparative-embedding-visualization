@@ -73,60 +73,24 @@ umap_vs_ozette
 <img width="1269" alt="User interface of cev's comparison widget" src="https://github.com/OzetteTech/comparative-embedding-visualization/assets/84813279/db28944b-fa36-475c-b3b9-efd07272e1b9">
 
 
-
 See [notebooks/getting-started.ipynb](notebooks/getting-started.ipynb) for the complete example.
 
 ## Development
 
-First, create a virtual environment with all the required dependencies. We highly recommend to use [`hatch`](https://github.com/pypa/hatch), which installs and sync all dependencies from `pyproject.toml` automatically.
+We use [`uv`](https://astral.sh/uv) for development.
 
 ```sh
-hatch shell
-```
-
-Alternatively, you can also use [`conda`](https://docs.conda.io/en/latest/).
-
-```sh
-conda env create -n cev python=3.11
-conda activate cev
-```
-
-Next, install `cev` with all development assets.
-
-```sh
-pip install -e ".[notebooks,dev]"
-```
-
-Finally, you can now run the notebooks with:
-
-```sh
-jupyterlab
+uv run jupyterlab
 ```
 
 ### Commands Cheatsheet
 
-If using `hatch` CLI, the following commands are available in the default environment:
-
 | Command                | Action                                                              |
 | :--------------------- | :------------------------------------------------------------------ |
-| `hatch run fix`        | Format project with `black .` and apply linting with `ruff --fix .` |
-| `hatch run fmt`        | Format project with `black .` and apply linting with `ruff --fix .` |
-| `hatch run check`      | Check formatting and linting with `black --check .` and `ruff .`.   |
-| `hatch run test`       | Run unittests with `pytest` in base environment.                    |
-| `hatch run test:test`  | Run unittests with `pytest` in all supported environments.          |
+| `uv run ruff format`   | Format the source code.                                             |
+| `uv run ruff check`    | Check the source code for formatting issues.                        |
+| `uv run pytest`        | Run unit tests with `pytest` in base environment.                   |
 
-Alternatively, you can devlop **cev** by manually creating a virtual environment and managing
-dependencies with `pip`.
-
-Our CI linting/formatting checks are configured with [`pre-commit`](https://pre-commit.com/).
-We recommend installing the git hook scripts to allow `pre-commit` to run automatically on `git commit`.
-
-```sh
-pre-commit install # run this once to install the git hooks
-```
-
-This will ensure that code pushed to CI meets our linting and formatting criteria. Code that does
-not comply will fail in CI.
 
 ## Release
 

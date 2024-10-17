@@ -399,15 +399,13 @@ def robust_labels(labels: npt.ArrayLike, robust: npt.NDArray[np.bool_] | None = 
 
 
 @typing.overload
-def create_colormaps(cats: typing.Iterable[str]) -> dict:
-    ...
+def create_colormaps(cats: typing.Iterable[str]) -> dict: ...
 
 
 @typing.overload
 def create_colormaps(
     cats: typing.Iterable[str], *other: typing.Iterable[str]
-) -> tuple[dict, ...]:
-    ...
+) -> tuple[dict, ...]: ...
 
 
 def create_colormaps(
