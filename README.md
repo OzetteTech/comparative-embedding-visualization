@@ -33,6 +33,14 @@
   
 </div>
 
+## Quick Start
+
+The **cev** package has a cli to quickly try out a demo of comparison widget in JupyterLab. It requires [uv](https://astral.sh/uv) to be installed.
+
+```sh
+uvx --python 3.11 cev demo # Downloads datasets and launches Jupyter Lab
+```
+
 ## Installation
 
 > **Warning**: `cev` is new and under active development. It is not yet ready for production and APIs are subject to change.
