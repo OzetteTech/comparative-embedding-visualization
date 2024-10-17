@@ -4,7 +4,6 @@ data/
 .snakemake/
 .ipynb_checkpoints/
 *.egg-info/
-src/cev/_version.py
 .vite
 dist/
 mair/
