@@ -18,7 +18,7 @@ jobs:
       - uses: astral-sh/setup-uv@v3
         with:
           version: "0.4.x"
-      - run:
+      - run: |
           uv run ruff check
           uv run ruff format
 
