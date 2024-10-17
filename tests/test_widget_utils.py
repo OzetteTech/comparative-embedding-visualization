@@ -1,4 +1,5 @@
 import pandas as pd
+
 from cev._widget_utils import trim_label_series
 
 

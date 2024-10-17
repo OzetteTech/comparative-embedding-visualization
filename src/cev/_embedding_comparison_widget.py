@@ -24,7 +24,7 @@ from cev.components import MarkerSelectionIndicator, WidthOptimizer
 
 
 def _create_titles(
-    titles: tuple[str, str]
+    titles: tuple[str, str],
 ) -> tuple[ipywidgets.Widget, ipywidgets.Widget]:
     left_title, right_title = titles
     spacer = ipywidgets.HTML(

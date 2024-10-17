@@ -1,4 +1,4 @@
-name: Release
+name: CI
 
 on:
   push:
@@ -14,34 +14,33 @@ jobs:
   Lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      # this could be replaced with pre-commit.ci
-      - run: pipx run pre-commit run --all-files
+      - uses: actions/checkout@v3
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.4.x"
+      - run: |
+          uv run ruff check
+          uv run ruff format
 
   Test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
-
+        python-version:
+          - "3.8"
+          - "3.9"
+          - "3.10"
+          - "3.11"
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v3
+      - run: echo "${{ matrix.python-version }}" > .python-version
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e .[test,dev]
-
-      - name: Run tests
-        run: pytest --color=yes
+          python-version-file: ".python-version"
+      - uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.4.x"
+      - run: uv run pytest --color=yes
 
   Release:
     if: startsWith(github.ref, 'refs/tags/')
@@ -50,24 +49,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
+      - uses: astral-sh/setup-uv@v3
         with:
-          python-version: "3.x"
+          version: "0.4.x"
 
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install build twine
-
-      - name: Build
-        run: |
-          python -m build
-          twine check dist/*
+      - run: |
+          uv build
+          uvx twine check dist/*
           ls -lh dist
 
       - name: Publish to PyPI
-        run: twine upload dist/*
+        run: uvx twine upload dist/*
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TWINE_API_KEY }}

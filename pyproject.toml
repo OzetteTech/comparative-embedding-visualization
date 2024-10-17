@@ -33,14 +33,7 @@ dependencies = [
 ]
 dynamic = ["version"]
 
-# https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
-dev = [
-    "black[jupyter]==23.1.0",
-    "jupyterlab",
-    "pytest",
-    "ruff==0.0.246",
-]
 notebooks = [
     "pyarrow",
     "fastparquet",
@@ -59,31 +52,15 @@ sources = ["src"]
 [tool.hatch.version]
 source = "vcs"
 
-[tool.hatch.envs.default]
-python = "3.10"
-features = ["dev", "notebooks"]
-
-[tool.hatch.envs.default.scripts]
-fmt = [
-    "black .",
-    "ruff --fix .",
-]
-check = [
-    "black --check --diff .",
-    "ruff .",
-]
-test = "pytest --color=yes"
-
-[[tool.hatch.envs.test.matrix]]
-python = ["38", "39", "310", "311"]
-
 [tool.ruff]
 line-length = 88
 target-version = "py38"
+
+[tool.ruff.lint]
 extend-select = [
     "E",    # style errors
     "F",    # flake
-    # "D",    # pydocstyle
+    # "D",  # pydocstyle
     "I001", # isort
     "UP",   # pyupgrade
     "RUF",  # ruff-specific rules
@@ -97,4 +74,11 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore:Jupyter is migrating its paths:DeprecationWarning",
     "ignore:Deprecated in traitlets 4.1, use the instance .metadata:DeprecationWarning",
+]
+
+[tool.uv]
+dev-dependencies = [
+    "jupyterlab>=4.2.5",
+    "pytest>=8.3.3",
+    "ruff>=0.7.0",
 ]
