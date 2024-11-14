@@ -80,7 +80,7 @@ See [notebooks/getting-started.ipynb](notebooks/getting-started.ipynb) for the c
 We use [`uv`](https://astral.sh/uv) for development.
 
 ```sh
-uv run jupyterlab
+uv run jupyter lab
 ```
 
 ### Commands Cheatsheet
